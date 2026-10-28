@@ -94,7 +94,7 @@
             <label>Nombre de billets</label>
             <div class="qtes" id="qtes"></div>
             <div id="autreWrap">
-                <input id="autre" type="number" inputmode="numeric" min="6" max="50" placeholder="Nombre de billets (6 et plus)">
+                <input id="autre" type="number" inputmode="numeric" min="6" max="10" placeholder="Nombre de billets (6 et plus)">
             </div>
 
             <!-- honeypot anti-bot -->
@@ -126,10 +126,10 @@
 
 <script>
     /* ====== CONFIG ====== */
-    const API_URL = 'COLLER_ICI_URL_WEB_APP';   // https://script.google.com/macros/s/XXXX/exec
+    const API_URL = 'https://script.google.com/macros/s/AKfycbykcmTL6uIcOZRLrFERCLPEedM-r7JyB6uXdnM2bfIadnz_SGC6KEWUqT8g4xrAwgyWrQ/exec';   // https://script.google.com/macros/s/XXXX/exec
     const TITRE   = 'Tirage – Billets Canadiens';
     const QTES_RAPIDES = [1, 2, 3, 4, 5];
-    const MAX_BILLETS = 50;
+    const MAX_BILLETS = 400;
     const LS_KEY = 'tirage_derniere_commande';
     /* ==================== */
 
