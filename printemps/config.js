@@ -1,2 +1,2 @@
 // URL /exec du déploiement Apps Script « Printemps 2027 » (une seule place à modifier)
-window.PRINTEMPS_API = 'https://script.google.com/a/macros/techqueb.com/s/AKfycbyMRsFrc0bEnab33Xvi_J8EUnvU78iuhuHEXTWCTT55G-TgtcnXHIDmfdFbjU8BW91X/exec';
+window.PRINTEMPS_API = 'https://script.google.com/macros/s/AKfycbwsaxwbyZb6C7RHQyhh2VMA-9hOaQHiWA1WnftysZy9xDh3vWWepLLMJwfs4NymoZl-8w/exec';
