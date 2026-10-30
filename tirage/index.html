@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="theme-color" content="#0d0d0f">
     <title>Tirage – Billets Canadiens</title>
-    <link rel="preload" as="image" href="../banniere-aigles-d3.jpg">
+    <link rel="preload" as="image" href="../banniere-aigles.jpg">
     <link rel="stylesheet" href="../assets/site.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -76,7 +76,7 @@
 <body>
 <header class="site-header">
     <a class="retour" href="../">← Accueil</a>
-    <img src="../banniere-aigles-d3.jpg" alt="Aigles D3 – Passion, Développement, Excellence" width="2172" height="724">
+    <img src="../banniere-aigles.jpg" alt="Aigles 2019 – Passion, Développement, Excellence" width="2172" height="724">
     <div class="titres">
         <h1 id="titre">Tirage – Billets Canadiens</h1>
         <p>Achat de billets de tirage</p>
@@ -94,7 +94,7 @@
                 <div class="info"><small>Date du tirage</small><strong id="dateTirage">–</strong></div>
             </div>
 
-            <label for="joueur">Au profit de (joueur)</label>
+            <label for="joueur">Joueur qui fait la vente</label>
             <select id="joueur" required>
                 <option value="">— Choisir un joueur —</option>
             </select>
@@ -138,13 +138,13 @@
     </section>
 </main>
 
-<footer class="site-footer"><a href="../">Aigles D3</a></footer>
+<footer class="site-footer"><a href="../">Aigles de Sherbrooke 2019</a></footer>
 
 <script>
   /* ====== CONFIG ====== */
   const API_URL = 'https://script.google.com/macros/s/AKfycbykcmTL6uIcOZRLrFERCLPEedM-r7JyB6uXdnM2bfIadnz_SGC6KEWUqT8g4xrAwgyWrQ/exec';
   const TITRE   = 'Tirage – Billets Canadiens';
-  const BANNIERE = '../banniere-aigles-d3.jpg';
+  const BANNIERE = '../banniere-aigles.jpg';
   const QTES_RAPIDES = [1, 2, 3, 4, 5];
   const MAX_BILLETS = 400;
   const LS_KEY = 'tirage_derniere_commande';
@@ -296,7 +296,7 @@
     const lignes = res.billets.map(b =>
       `<tr><td>#${String(b.numero).padStart(3, '0')}</td><td class="code">${esc(b.code)}</td></tr>`).join('');
     $('recu').innerHTML = `
-    <img class="recu-banniere" src="${BANNIERE}" alt="Aigles D3" width="2172" height="724">
+    <img class="recu-banniere" src="${BANNIERE}" alt="Aigles de Sherbrooke 2019" width="2172" height="724">
     <div class="corps">
       <h2>${esc(TITRE)}</h2>
       <div class="sous">Preuve d'achat – commande ${esc(res.commande)}</div>

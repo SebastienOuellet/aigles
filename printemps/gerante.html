@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#0d0d0f">
+  <title>Gestion Printemps — Aigles</title>
+  <link rel="stylesheet" href="../assets/site.css">
+  <style>
+    body{font-size:15px}
+    .top{background:var(--noir);color:#fff;padding:18px 16px;border-bottom:4px solid var(--or)}
+    .top .wrap{max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+    .top small{letter-spacing:.14em;text-transform:uppercase;color:var(--or);font-weight:700;font-size:12px}
+    .top h1{margin:4px 0 0;font-size:24px}
+    .top a{color:#bdb5b7;font-size:14px}
+    main{max-width:1200px;margin:18px auto 40px;padding:0 16px}
+    .carte{background:#fff;border-radius:14px;padding:20px;box-shadow:0 6px 22px rgba(0,0,0,.35)}
+    label{display:block;font-weight:600;margin:0 0 5px;font-size:14px}
+    input,textarea{width:100%;padding:10px 12px;font:inherit;border:1.5px solid var(--bord);border-radius:9px;background:#fff;color:var(--texte)}
+    input:focus{outline:none;border-color:var(--bordeaux);box-shadow:0 0 0 3px rgba(122,20,38,.15)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:10px 16px;
+      font:inherit;font-weight:700;cursor:pointer;background:var(--bordeaux);color:#fff;white-space:nowrap}
+    .btn:hover{background:var(--bordeaux-fonce)}
+    .btn.or{background:var(--or);color:var(--noir)}
+    .btn.ghost{background:transparent;color:#fff;border:1.5px solid #4a444d}
+    .btn.ghost:hover{border-color:var(--or)}
+    .btn.ghost.clair{color:var(--bordeaux);border-color:var(--bordeaux)}
+    .btn:disabled{opacity:.6;cursor:wait}
+    .err{background:#fdecea;color:#b42318;border-radius:10px;padding:10px 12px;margin-top:12px;display:none;font-size:14px}
+    #login{max-width:420px;margin:30px auto}
+    #login form{display:flex;gap:8px}
+    .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+    .bar input{flex:1;min-width:180px;max-width:320px}
+    .legende{color:#bdb5b7;font-size:13px;display:flex;gap:14px;flex-wrap:wrap;margin:0 0 10px}
+    .legende span{display:inline-flex;align-items:center;gap:5px}
+
+    /* Tableau joueurs × pratiques */
+    .tbl-wrap{overflow:auto;border-radius:12px;background:#fff;box-shadow:0 6px 22px rgba(0,0,0,.35);max-height:calc(100vh - 220px)}
+    table{border-collapse:separate;border-spacing:0;width:100%;min-width:480px}
+    th,td{padding:9px 10px;border-bottom:1px solid var(--bord);text-align:center;white-space:nowrap}
+    thead th{position:sticky;top:0;background:var(--noir);color:#fff;z-index:2;font-size:13px}
+    th.joueur,td.joueur{position:sticky;left:0;text-align:left;background:#fff;z-index:1;min-width:190px}
+    thead th.joueur{background:var(--noir);z-index:3}
+    td.joueur small{color:var(--gris)}
+    th button.prat{all:unset;cursor:pointer;display:block;padding:2px 4px;border-radius:6px;line-height:1.25}
+    th button.prat:hover,th button.prat:focus-visible{background:var(--bordeaux);outline:none}
+    th button.prat small{display:block;color:var(--or);font-weight:600;font-size:11px}
+    th.prochaine{box-shadow:inset 0 -3px 0 var(--or)}
+    .pill{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:24px;padding:0 6px;border-radius:999px;font-size:12px;font-weight:800}
+    .p-present{background:#d4edda;color:#155724}
+    .p-confirme{background:#fff3cd;color:#856404}
+    .p-absent{background:#f8d7da;color:#721c24}
+    .p-vide{color:#c9c2c4}
+    .paye{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:800;margin-left:4px}
+    .paye.oui{background:var(--ok);color:#fff}
+    .paye.non{background:#f8d7da;color:#b42318;text-decoration:line-through}
+    .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:#fff3cd;color:#856404;margin-left:6px;vertical-align:middle}
+    .vide{padding:30px;text-align:center;color:var(--gris)}
+
+    /* Vue pratique */
+    .entete-prat{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start}
+    .entete-prat h2{margin:0;color:var(--bordeaux);font-size:22px}
+    .entete-prat .det{color:var(--gris);margin-top:4px}
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin:16px 0}
+    .stat{background:var(--fond-clair);border-radius:10px;padding:10px 12px;border-left:3px solid var(--or)}
+    .stat small{display:block;color:var(--gris);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+    .stat b{font-size:20px}
+    .seg{display:inline-flex;border:1.5px solid var(--bord);border-radius:10px;overflow:hidden}
+    .seg button{border:0;background:#fff;font:inherit;font-size:13px;font-weight:700;padding:8px 12px;cursor:pointer;color:var(--gris)}
+    .seg button+button{border-left:1.5px solid var(--bord)}
+    .seg button.on.pr{background:#1d7a46;color:#fff}
+    .seg button.on.ab{background:#b42318;color:#fff}
+    .toggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;font-size:13px;color:var(--gris)}
+    .toggle input{width:22px;height:22px;accent-color:var(--ok);cursor:pointer}
+    .etat{font-size:12px;min-width:16px;display:inline-block}
+    .etat.ok{color:var(--ok)} .etat.ko{color:#b42318}
+    td.l{text-align:left}
+
+    /* Fenêtre */
+    .ov{position:fixed;inset:0;background:rgba(13,13,15,.7);display:none;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto;z-index:10}
+    .ov.open{display:flex}
+    .modal{background:#fff;border-radius:14px;max-width:460px;width:100%;padding:20px}
+    .modal h2{margin:0 0 14px;font-size:19px;color:var(--bordeaux)}
+    .grille{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .grille .full{grid-column:1/-1}
+    .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+    [hidden]{display:none!important}
+  </style>
+</head>
+<body>
+<div class="top">
+  <div class="wrap">
+    <div><small id="equipe">Aigles · Printemps 2027</small><h1>Gestion des pratiques</h1></div>
+    <div><a href="./" target="_blank">Formulaire des parents ↗</a> <span id="out" hidden>· <a href="#" id="logout">Se déconnecter</a></span></div>
+  </div>
+</div>
+
+<main>
+  <section class="carte" id="login">
+    <label for="code">Code gérante</label>
+    <form id="fLogin"><input id="code" type="password" autocomplete="off" required><button class="btn" id="bLogin">Entrer</button></form>
+    <div class="err" id="eLogin"></div>
+  </section>
+
+  <!-- Vue tableau -->
+  <section id="vTable" hidden>
+    <div class="bar">
+      <button class="btn or" id="bAjout" type="button">+ Ajouter une pratique</button>
+      <input id="q" type="search" placeholder="Rechercher un joueur">
+      <button class="btn ghost" id="bRefresh" type="button" title="Rafraîchir">↻</button>
+    </div>
+    <div class="legende">
+      <span><span class="pill p-present">P</span> Présent</span>
+      <span><span class="pill p-confirme">C</span> Confirmé</span>
+      <span><span class="pill p-absent">A</span> Absent</span>
+      <span><span class="paye oui">$</span> Payé</span>
+      <span><span class="paye non">$</span> Pas payé</span>
+      <span>Clique sur une date pour gérer la pratique.</span>
+    </div>
+    <div class="tbl-wrap"><table id="tbl"></table></div>
+    <div class="err" id="eTable"></div>
+  </section>
+
+  <!-- Vue pratique -->
+  <section id="vPrat" hidden>
+    <div class="bar"><button class="btn ghost" id="bRetour" type="button">← Tous les joueurs</button></div>
+    <div class="carte">
+      <div class="entete-prat">
+        <div><h2 id="pTitre"></h2><div class="det" id="pDet"></div></div>
+        <input id="qP" type="search" placeholder="Rechercher un joueur" style="max-width:260px">
+      </div>
+      <div class="stats" id="pStats"></div>
+      <div style="overflow:auto"><table id="tblP"></table></div>
+      <div class="err" id="ePrat"></div>
+    </div>
+  </section>
+</main>
+
+<!-- Ajout de pratique -->
+<div class="ov" id="ovA" role="dialog" aria-modal="true" aria-labelledby="aTitre">
+  <div class="modal">
+    <h2 id="aTitre">Ajouter une pratique</h2>
+    <div class="grille">
+      <div><label for="aDate">Date</label><input id="aDate" type="date"></div>
+      <div><label for="aHeure">Heure</label><input id="aHeure" placeholder="ex. 9 h 00"></div>
+      <div class="full"><label for="aEndroit">Endroit</label><input id="aEndroit" placeholder="ex. Aréna Eugène-Lalonde"></div>
+      <div><label for="aCout">Coût <span style="font-weight:400;color:var(--gris)">(optionnel)</span></label><input id="aCout" placeholder="ex. 15 $"></div>
+      <div><label for="aNotes">Notes <span style="font-weight:400;color:var(--gris)">(optionnel)</span></label><input id="aNotes"></div>
+    </div>
+    <div class="err" id="eAjout"></div>
+    <div class="actions">
+      <button class="btn ghost clair" id="aAnnuler" type="button">Annuler</button>
+      <button class="btn" id="aGo" type="button">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+  const API = window.PRINTEMPS_API;
+  const $ = id => document.getElementById(id);
+  let CODE = '', DATA = null, courante = null;
+
+  async function api(action, data){
+    if (!API || /COLLE_ICI/.test(API)) throw new Error('URL de l’API manquante dans printemps/config.js.');
+    const r = await fetch(API, { method: 'POST', credentials: 'omit', redirect: 'follow', body: JSON.stringify({ action, code: CODE, data }) });
+    if (!r.ok) throw new Error('Serveur indisponible (' + r.status + ').');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error);
+    return j.data;
+  }
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function err(id, m){ const e = $(id); e.textContent = m || ''; e.style.display = m ? 'block' : 'none'; }
+  const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  function dObj(iso){ const [y,m,d] = iso.split('-').map(Number); return new Date(y, m-1, d); }
+  const court = iso => dObj(iso).toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/\./g, '');
+  const long = iso => { const s = dObj(iso).toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }); return s.charAt(0).toUpperCase() + s.slice(1); };
+
+  /* ---------- Connexion (code jamais mémorisé) ---------- */
+  const cmp = (a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' });
+  function trier(d){ d.joueurs.sort((a, b) => cmp(a.nom, b.nom) || cmp(a.prenom, b.prenom)); return d; }
+  const nomAff = j => '<b>' + esc(j.nom) + '</b>, ' + esc(j.prenom);
+
+  async function charger(){
+    DATA = trier(await api('gestion'));
+    $('equipe').textContent = (DATA.equipe || 'Aigles') + ' · Printemps 2027';
+    if (courante) afficherPratique(courante); else afficherTable();
+  }
+  $('fLogin').addEventListener('submit', async e => {
+    e.preventDefault();
+    CODE = $('code').value.trim(); if (!CODE) return;
+    $('bLogin').disabled = true; err('eLogin', '');
+    try {
+      await charger();
+      $('login').hidden = true; $('out').hidden = false; relancer();
+    } catch (x) { CODE = ''; err('eLogin', x.message); }
+    finally { $('bLogin').disabled = false; }
+  });
+  function deconnecter(m){
+    CODE = ''; DATA = null; courante = null; $('code').value = '';
+    $('tbl').innerHTML = ''; $('tblP').innerHTML = '';
+    $('vTable').hidden = true; $('vPrat').hidden = true; $('out').hidden = true; $('login').hidden = false;
+    $('ovA').classList.remove('open'); err('eLogin', m || ''); $('code').focus();
+  }
+  $('logout').addEventListener('click', e => { e.preventDefault(); deconnecter(); });
+  let minuterie = null;
+  function relancer(){ clearTimeout(minuterie); if (CODE) minuterie = setTimeout(() => deconnecter('Session verrouillée après 20 minutes d’inactivité.'), 20 * 60 * 1000); }
+  ['click','keydown','input','scroll','touchstart'].forEach(ev => document.addEventListener(ev, relancer, { passive: true }));
+
+  /* ---------- Vue tableau ---------- */
+  function pill(st){
+    const p = (st && st.p) || '';
+    const cls = p === 'Présent' ? 'p-present' : p === 'Confirmé' ? 'p-confirme' : p === 'Absent' ? 'p-absent' : 'p-vide';
+    return '<span class="pill ' + cls + '" title="' + esc(p || 'Aucune donnée') + '">' + (p ? p[0] : '·') + '</span>' +
+           (st && st.paye ? '<span class="paye oui" title="Payé">$</span>'
+             : p === 'Présent' ? '<span class="paye non" title="Présent, pas payé">$</span>' : '');
+  }
+  function afficherTable(){
+    courante = null;
+    $('vPrat').hidden = true; $('vTable').hidden = false;
+    const q = norm($('q').value);
+    // Plus récente à gauche (à côté des noms), les plus anciennes vers la droite
+    const pr = DATA.pratiques.slice().sort((a, b) => b.date.localeCompare(a.date)), prochaine = DATA.prochaine && DATA.prochaine.date;
+    const joueurs = DATA.joueurs.filter(j => !q || norm(j.nom + ' ' + j.prenom + ' ' + j.prenom + ' ' + j.nom + ' ' + j.position).includes(q));
+    if (!DATA.joueurs.length) { $('tbl').innerHTML = '<tr><td class="vide">Aucun joueur inscrit pour l’instant.</td></tr>'; return; }
+    let h = '<thead><tr><th class="joueur">Joueur (' + joueurs.length + ')</th>';
+    pr.forEach(p => {
+      h += '<th class="' + (p.date === prochaine ? 'prochaine' : '') + '"><button class="prat" data-date="' + p.date + '" title="Gérer la pratique">' +
+           esc(court(p.date)) + '<small>' + esc(p.heure || '') + '</small></button></th>';
+    });
+    if (!pr.length) h += '<th>Aucune pratique — ajoute-en une</th>';
+    h += '</tr></thead><tbody>';
+    joueurs.forEach(j => {
+      h += '<tr><td class="joueur"><span style="display:block">' + nomAff(j) + (j.incomplet ? '<span class="badge" title="Inscription incomplète">fiche incomplète</span>' : '') +
+           '</span><small>' + esc(j.position || '—') + '</small></td>';
+      pr.forEach(p => { h += '<td>' + pill(j.presences[p.date]) + '</td>'; });
+      if (!pr.length) h += '<td></td>';
+      h += '</tr>';
+    });
+    $('tbl').innerHTML = h + '</tbody>';
+  }
+  $('q').addEventListener('input', afficherTable);
+  $('tbl').addEventListener('click', e => { const b = e.target.closest('button.prat'); if (b) afficherPratique(b.dataset.date); });
+  $('bRefresh').addEventListener('click', async () => {
+    $('bRefresh').disabled = true;
+    try { await charger(); err('eTable', ''); } catch (x) { err('eTable', x.message); } finally { $('bRefresh').disabled = false; }
+  });
+
+  /* ---------- Vue pratique ---------- */
+  function afficherPratique(date){
+    const p = DATA.pratiques.find(x => x.date === date);
+    if (!p) return afficherTable();
+    courante = date;
+    $('vTable').hidden = true; $('vPrat').hidden = false;
+    $('pTitre').textContent = long(date);
+    $('pDet').textContent = [p.heure, p.endroit, p.cout && ('Coût : ' + p.cout), p.notes].filter(Boolean).join(' · ');
+    majStats(); rendreLignes();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function majStats(){
+    const st = DATA.joueurs.map(j => j.presences[courante] || {});
+    const n = v => st.filter(s => s.p === v).length;
+    const payes = st.filter(s => s.paye).length;
+    $('pStats').innerHTML =
+      '<div class="stat"><small>Présents</small><b>' + n('Présent') + '</b></div>' +
+      '<div class="stat"><small>Confirmés</small><b>' + n('Confirmé') + '</b></div>' +
+      '<div class="stat"><small>Absents</small><b>' + n('Absent') + '</b></div>' +
+      '<div class="stat"><small>Payés</small><b>' + payes + ' / ' + n('Présent') + '</b></div>' +
+      '<div class="stat" style="border-left-color:#b42318"><small>Présents non payés</small><b>' + st.filter(s => s.p === 'Présent' && !s.paye).length + '</b></div>';
+  }
+  function rendreLignes(){
+    const q = norm($('qP').value);
+    const js = DATA.joueurs.filter(j => !q || norm(j.nom + ' ' + j.prenom + ' ' + j.prenom + ' ' + j.nom).includes(q));
+    let h = '<thead><tr><th class="l" style="background:var(--noir)">Joueur</th><th style="background:var(--noir)">Présence</th><th style="background:var(--noir)">Paiement</th><th style="background:var(--noir)"></th></tr></thead><tbody>';
+    js.forEach(j => {
+      const s = j.presences[courante] || { p: '', paye: false };
+      h += '<tr data-id="' + esc(j.id) + '"><td class="l">' + nomAff(j) +
+        (s.p === 'Confirmé' ? '<span class="badge">confirmé</span>' : '') +
+        '<br><small style="color:var(--gris)">' + esc(j.position || '—') + '</small></td>' +
+        '<td><div class="seg"><button type="button" class="pr ' + (s.p === 'Présent' ? 'on' : '') + '" data-p="Présent">Présent</button>' +
+        '<button type="button" class="ab ' + (s.p === 'Absent' ? 'on' : '') + '" data-p="Absent">Absent</button></div></td>' +
+        '<td><label class="toggle"' + (s.p === 'Absent' ? ' hidden' : '') + '><input type="checkbox" data-paye ' + (s.paye ? 'checked' : '') + '> Payé</label></td>' +
+        '<td><span class="etat"></span></td></tr>';
+    });
+    $('tblP').innerHTML = h + '</tbody>';
+  }
+  $('qP').addEventListener('input', rendreLignes);
+  $('bRetour').addEventListener('click', afficherTable);
+
+  // Enregistrement immédiat (optimiste, annulé en cas d'erreur)
+  async function enregistrer(tr, changement){
+    const j = DATA.joueurs.find(x => x.id === tr.dataset.id);
+    const avant = Object.assign({ p: '', paye: false }, j.presences[courante]);
+    const apres = Object.assign({}, avant);
+    if ('presence' in changement) { apres.p = changement.presence; if (apres.p === 'Absent') apres.paye = false; }
+    if ('paye' in changement) apres.paye = changement.paye;
+    j.presences[courante] = apres;
+    const etat = tr.querySelector('.etat');
+    etat.className = 'etat'; etat.textContent = '…';
+    majStats();
+    try {
+      await api('setPresence', Object.assign({ date: courante, id: j.id }, changement));
+      etat.className = 'etat ok'; etat.textContent = '✓'; err('ePrat', '');
+    } catch (x) {
+      j.presences[courante] = avant;
+      etat.className = 'etat ko'; etat.textContent = '!';
+      err('ePrat', j.prenom + ' ' + j.nom + ' : ' + x.message);
+      rendreLignes(); majStats();
+    }
+  }
+  $('tblP').addEventListener('click', e => {
+    const b = e.target.closest('button[data-p]'); if (!b) return;
+    const tr = b.closest('tr');
+    const actuel = (DATA.joueurs.find(x => x.id === tr.dataset.id).presences[courante] || {}).p || '';
+    const val = actuel === b.dataset.p ? '' : b.dataset.p; // recliquer = effacer
+    tr.querySelectorAll('button[data-p]').forEach(x => x.classList.toggle('on', x.dataset.p === val));
+    const badge = tr.querySelector('.badge'); if (badge) badge.remove();
+    const tg = tr.querySelector('.toggle');
+    tg.hidden = val === 'Absent';
+    if (val === 'Absent') tg.querySelector('input').checked = false;
+    enregistrer(tr, { presence: val });
+  });
+  $('tblP').addEventListener('change', e => {
+    if (!e.target.matches('input[data-paye]')) return;
+    enregistrer(e.target.closest('tr'), { paye: e.target.checked });
+  });
+
+  /* ---------- Ajout de pratique ---------- */
+  $('bAjout').addEventListener('click', () => {
+    ['aDate','aHeure','aEndroit','aCout','aNotes'].forEach(id => $(id).value = '');
+    const der = DATA.pratiques[DATA.pratiques.length - 1];
+    if (der) { $('aHeure').value = der.heure || ''; $('aEndroit').value = der.endroit || ''; $('aCout').value = der.cout || ''; }
+    err('eAjout', ''); $('ovA').classList.add('open'); $('aDate').focus();
+  });
+  const fermerA = () => { if (!$('aGo').disabled) $('ovA').classList.remove('open'); };
+  $('aAnnuler').addEventListener('click', fermerA);
+  $('ovA').addEventListener('click', e => { if (e.target.id === 'ovA') fermerA(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') fermerA(); });
+  $('aGo').addEventListener('click', async () => {
+    if (!$('aDate').value) return err('eAjout', 'Choisis la date.');
+    const b = $('aGo'); b.disabled = true; b.textContent = 'Ajout…';
+    try {
+      DATA = trier(await api('ajouterPratique', { date: $('aDate').value, heure: $('aHeure').value, endroit: $('aEndroit').value, cout: $('aCout').value, notes: $('aNotes').value }));
+      b.disabled = false; fermerA(); afficherTable();
+    } catch (x) { err('eAjout', x.message); }
+    finally { b.disabled = false; b.textContent = 'Ajouter'; }
+  });
+
+  $('code').focus();
+})();
+</script>
+</body>
+</html>
