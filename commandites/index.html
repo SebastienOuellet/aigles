@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commandites — Aigles D3</title>
+<meta name="theme-color" content="#0d0d0f">
+<link rel="preload" as="image" href="../banniere-aigles-d3.jpg">
+<link rel="stylesheet" href="../assets/site.css">
+<style>
+  :root{
+    --navy:#7a1426; --navy-2:#5a0e1c; --gold:#f5a800; --gold-soft:#fff3d6;
+    --bg:#0d0d0f; --card:#fff; --ink:#18212f; --muted:#5d6878; --line:#d9dee7;
+    --err:#b42318; --ok:#127a43; --r:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+  main{max-width:720px;margin:-40px auto 40px;padding:0 16px;position:relative}
+  .card{background:var(--card);border-radius:var(--r);box-shadow:0 1px 2px rgba(11,37,69,.06),0 8px 24px rgba(11,37,69,.06);
+        padding:22px 20px;margin-bottom:16px}
+  .card h2{margin:0 0 4px;font-size:18px;display:flex;align-items:center;gap:10px}
+  .num{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;
+       background:var(--navy);color:#fff;font-size:13px;font-weight:700;flex:none}
+  .hint{color:var(--muted);font-size:14px;margin:0 0 14px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+  .full{grid-column:1/-1}
+  @media (max-width:560px){.grid{grid-template-columns:1fr}}
+  label{display:block;font-size:14px;font-weight:600;margin-bottom:5px}
+  label .opt{font-weight:400;color:var(--muted)}
+  input,select,textarea{width:100%;font:inherit;color:inherit;padding:11px 12px;border:1px solid var(--line);
+       border-radius:9px;background:#fff;transition:border-color .15s, box-shadow .15s}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy-2);box-shadow:0 0 0 3px rgba(122,20,38,.15)}
+  textarea{min-height:70px;resize:vertical}
+  .seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+  .seg input{position:absolute;opacity:0;pointer-events:none}
+  .seg label{margin:0;border:1.5px solid var(--line);border-radius:10px;padding:12px;text-align:center;cursor:pointer;font-size:16px}
+  .seg input:checked + label{border-color:var(--navy);background:var(--navy);color:#fff}
+  .seg input:focus-visible + label{box-shadow:0 0 0 3px rgba(122,20,38,.25)}
+  .money{position:relative}
+  .money input{padding-right:34px;font-size:20px;font-weight:700}
+  .money span{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:700}
+  .ratio{margin-top:6px}
+  .ratio-top{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--muted)}
+  .ratio-top b{font-size:22px;color:var(--navy)}
+  input[type=range]{padding:0;border:0;height:28px;accent-color:var(--navy);box-shadow:none}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .pill{border-radius:10px;padding:12px;background:#f5f7fb}
+  .pill.team{background:var(--gold-soft)}
+  .pill small{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+  .pill strong{font-size:20px}
+  .regle{font-size:14px;color:var(--muted);background:#f5f7fb;border-radius:10px;padding:10px 12px;margin-bottom:12px}
+  .seuil{margin-top:10px;background:var(--gold-soft);border-radius:10px;padding:10px 12px;font-size:14px}
+  #ratioBox.off{opacity:.4;pointer-events:none}
+  .testbar{background:#b42318;color:#fff;text-align:center;font-weight:700;font-size:14px;padding:8px 16px;letter-spacing:.04em}
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;cursor:pointer;
+        color:var(--muted);transition:.15s;background:#fafbfd}
+  .drop.over{border-color:var(--navy);background:#eef3fb}
+  .drop img{max-height:110px;max-width:100%;display:block;margin:0 auto 8px}
+  .drop b{color:var(--navy)}
+  .check{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:14px;color:var(--muted)}
+  .check input{width:20px;height:20px;flex:none;margin-top:1px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:11px;
+       padding:15px 18px;font:inherit;font-weight:700;font-size:17px;cursor:pointer;background:var(--navy);color:#fff}
+  .btn:hover{background:var(--navy-2)}
+  .btn.gold{background:var(--gold);color:var(--navy)}
+  .btn.ghost{background:transparent;color:var(--navy);border:1.5px solid var(--navy)}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .err{background:#fdecea;color:var(--err);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:none}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .overlay{position:fixed;inset:0;background:rgba(13,13,15,.7);display:none;place-items:center;z-index:10}
+  .overlay div{background:#fff;padding:24px 28px;border-radius:14px;text-align:center;max-width:300px}
+  .spin{width:38px;height:38px;border:4px solid #dfe5ef;border-top-color:var(--navy);border-radius:50%;
+        animation:s 0.8s linear infinite;margin:0 auto 12px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  #succes{display:none}
+  .ok-head{text-align:center;padding:8px 0 6px}
+  .ok-head .badge{width:58px;height:58px;border-radius:50%;background:#e3f4ea;color:var(--ok);display:grid;
+                  place-items:center;font-size:30px;margin:0 auto 10px}
+  .ok-head h2{justify-content:center;font-size:22px}
+  .recap{background:#f5f7fb;border-radius:10px;padding:12px 14px;margin:14px 0;font-size:15px}
+  .recap div{display:flex;justify-content:space-between;padding:3px 0;gap:12px}
+  .recap span{color:var(--muted)}
+  .stack{display:grid;gap:10px}
+  .mail{font-size:14px;color:var(--muted);text-align:center;margin-top:10px}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="testbar" id="testbar" hidden>MODE TEST — aucune vraie facture, la gérante ne reçoit rien</div>
+<header class="site-header">
+  <a class="retour" href="../">← Accueil</a>
+  <img src="../banniere-aigles-d3.jpg" alt="Aigles D3 – Passion, Développement, Excellence" width="2172" height="724">
+  <div class="titres">
+    <h1>Commandites</h1>
+    <p>Déclare ta commandite — la facture est créée automatiquement</p>
+  </div>
+</header>
+
+<main>
+  <form id="f" novalidate>
+    <div class="err" id="err" role="alert"></div>
+
+    <!-- 1. Équipe et joueur -->
+    <section class="card">
+      <h2><span class="num">1</span>Équipe et joueur</h2>
+      <p class="hint">Pour qui la commandite a-t-elle été trouvée?</p>
+      <label>Équipe</label>
+      <div class="seg" id="equipes"></div>
+      <div class="grid" style="margin-top:14px">
+        <div class="full">
+          <label for="joueurSel">Joueur</label>
+          <select id="joueurSel" required><option value="">Choisis d’abord l’équipe</option></select>
+        </div>
+        <div class="full" id="autreWrap" hidden>
+          <label for="joueurAutre">Nom du joueur</label>
+          <input id="joueurAutre" autocomplete="off">
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Parent -->
+    <section class="card">
+      <h2><span class="num">2</span>Toi, le parent</h2>
+      <p class="hint">Tu vas recevoir la facture à ce courriel.</p>
+      <div class="grid">
+        <div class="full"><label for="parentNom">Ton nom</label><input id="parentNom" name="parentNom" autocomplete="name" required></div>
+        <div><label for="parentCourriel">Ton courriel</label><input id="parentCourriel" name="parentCourriel" type="email" autocomplete="email" required></div>
+        <div><label for="parentTel">Ton téléphone <span class="opt">(optionnel)</span></label><input id="parentTel" name="parentTel" type="tel" autocomplete="tel"></div>
+      </div>
+    </section>
+
+    <!-- 3. Montant -->
+    <section class="card">
+      <h2><span class="num">3</span>Montant et répartition</h2>
+      <p class="hint">Montant total que le commanditaire va payer.</p>
+      <div class="grid">
+        <div class="full">
+          <label for="montant">Montant total</label>
+          <div class="money"><input id="montant" name="montant" inputmode="decimal" placeholder="500" required><span>$</span></div>
+        </div>
+        <div class="full ratio">
+          <div class="regle" id="regle"></div>
+          <div id="ratioBox">
+            <div class="ratio-top"><span>Part de l’équipe (minimum <span id="minLbl">30</span> %)</span><b><span id="pctLbl">30</span> %</b></div>
+            <input type="range" id="pctEquipe" name="pctEquipe" min="30" max="100" step="5" value="30" aria-label="Pourcentage équipe">
+          </div>
+          <div class="split">
+            <div class="pill team"><small>Équipe</small><strong><span id="pctE">30</span> %</strong></div>
+            <div class="pill"><small>Joueur</small><strong><span id="pctJ">70</span> %</strong></div>
+          </div>
+          <div class="seuil" id="seuilMsg" hidden>🦅 Commandite de <b id="seuilLbl">250 $</b> et moins : <b>100 % va à l’équipe</b>.</div>
+        </div>
+        <div class="full"><label for="description">Description sur la facture</label><input id="description" name="description"></div>
+      </div>
+    </section>
+
+    <!-- 4. Commanditaire -->
+    <section class="card">
+      <h2><span class="num">4</span>Le commanditaire</h2>
+      <p class="hint">Ces informations apparaissent sur la facture.</p>
+      <div class="grid">
+        <div class="full"><label for="commanditaire">Nom de l’entreprise</label><input id="commanditaire" name="commanditaire" autocomplete="organization" required></div>
+        <div class="full"><label for="contact">Personne contact <span class="opt">(optionnel)</span></label><input id="contact" name="contact"></div>
+        <div class="full"><label for="adresse">Adresse</label><input id="adresse" name="adresse" autocomplete="street-address" placeholder="123, rue King Ouest" required></div>
+        <div><label for="ville">Ville</label><input id="ville" name="ville" autocomplete="address-level2" required></div>
+        <div class="grid" style="grid-template-columns:90px 1fr;gap:12px">
+          <div><label for="province">Prov.</label>
+            <select id="province" name="province">
+              <option>QC</option><option>ON</option><option>NB</option><option>NS</option><option>PE</option><option>NL</option>
+              <option>MB</option><option>SK</option><option>AB</option><option>BC</option><option>YT</option><option>NT</option><option>NU</option>
+            </select></div>
+          <div><label for="codePostal">Code postal</label><input id="codePostal" name="codePostal" autocomplete="postal-code" placeholder="J1H 1A1" maxlength="7" required></div>
+        </div>
+        <div><label for="telephone">Téléphone <span class="opt">(optionnel)</span></label><input id="telephone" name="telephone" type="tel"></div>
+        <div><label for="courriel">Courriel <span class="opt">(optionnel)</span></label><input id="courriel" name="courriel" type="email"></div>
+        <div class="full"><label for="siteWeb">Site web <span class="opt">(optionnel)</span></label><input id="siteWeb" name="siteWeb" type="url" placeholder="https://"></div>
+      </div>
+    </section>
+
+    <!-- 5. Logo -->
+    <section class="card">
+      <h2><span class="num">5</span>Logo du commanditaire</h2>
+      <p class="hint">PNG, JPG, SVG, PDF, AI ou EPS — max 8 Mo. Pas encore reçu? Laisse vide, la gérante fera le suivi.</p>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Téléverser le logo">
+        <img id="preview" hidden alt="">
+        <div id="dropTxt"><b>Clique ici</b> ou glisse le fichier du logo</div>
+      </div>
+      <input type="file" id="logo" accept=".png,.jpg,.jpeg,.svg,.webp,.pdf,.ai,.eps" hidden>
+      <div style="margin-top:14px"><label for="notes">Notes pour la gérante <span class="opt">(optionnel)</span></label>
+        <textarea id="notes" name="notes" placeholder="Ex. : logo sur les chandails, payé en argent, etc."></textarea></div>
+      <div class="hp" aria-hidden="true"><label>Ne pas remplir<input id="siteWebConfirm" tabindex="-1" autocomplete="off"></label></div>
+    </section>
+
+    <section class="card">
+      <label class="check"><input type="checkbox" id="confirme" required>
+        Je confirme que le commanditaire a accepté ce montant et que les informations sont exactes.</label>
+      <div style="margin-top:16px"><button class="btn" id="go" type="submit">Créer la facture</button></div>
+    </section>
+  </form>
+
+  <!-- Succès -->
+  <section class="card" id="succes" aria-live="polite">
+    <div class="ok-head"><div class="badge">✓</div><h2>Facture <span id="sNo"></span> créée</h2></div>
+    <div class="recap">
+      <div><span>Commanditaire</span><b id="sCom"></b></div>
+      <div><span>Montant</span><b id="sTot"></b></div>
+      <div><span>Répartition</span><b id="sRep"></b></div>
+    </div>
+    <div class="stack">
+      <button class="btn gold" id="dl" type="button">⬇ Télécharger la facture (PDF)</button>
+      <button class="btn ghost" id="encore" type="button">Déclarer une autre commandite</button>
+    </div>
+    <p class="mail" id="sMail"></p>
+  </section>
+</main>
+<footer class="site-footer"><a href="../">Aigles D3</a></footer>
+
+<div class="overlay" id="ov"><div><div class="spin"></div><b>Création de la facture…</b><br><span style="color:#5d6878;font-size:14px">Ça prend environ 10 secondes.</span></div></div>
+
+<script>
+(function(){
+  var CFG = null, logoFile = null, dernier = null;
+  var $ = function(id){ return document.getElementById(id); };
+  // Ancien lien gérante -> espace gérante
+  try { if (new URLSearchParams(location.search).has('gerante')) { location.replace('gerante.html'); return; } } catch (e) {}
+
+  // URL /exec du déploiement Apps Script (pour la version hébergée hors Google)
+  var API_URL = 'https://script.google.com/macros/s/AKfycbxyvYo_v8g4UXGDKRPqfN49eACqys3MlAhROFyZleTzIZoiloMdJbGHfgWFuQL2-qMV/exec';
+
+  var gs = (typeof google !== 'undefined' && google.script) ? google.script.run : null;
+  function appel(fn, arg){
+    if (API_URL) {
+      // POST text/plain = pas de preflight CORS; credentials omit = pas de cookies Google (évite le bug multi-comptes)
+      return fetch(API_URL, {
+        method: 'POST', credentials: 'omit', redirect: 'follow',
+        body: JSON.stringify({ action: fn === 'getFormConfig' ? 'config' : 'submit', data: arg })
+      })
+      .then(function(r){ if (!r.ok) throw new Error('Serveur indisponible (' + r.status + ').'); return r.json(); })
+      .then(function(j){ if (!j.ok) throw new Error(j.error); return j.data; });
+    }
+    return new Promise(function(ok, ko){
+      if (!gs) return setTimeout(function(){ ok(window.__mock[fn](arg)); }, 400); // aperçu local
+      gs.withSuccessHandler(ok).withFailureHandler(ko)[fn](arg);
+    });
+  }
+
+  function r2(n){ return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+  function argent(n){
+    var p = r2(n).toFixed(2).split('.');
+    return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ',' + p[1] + ' $';
+  }
+  function calc(montant, pct){
+    var total = r2(montant) || 0;
+    var est = r2(total / (1 + CFG.tauxTps + CFG.tauxTvq));
+    var tps = r2(est * CFG.tauxTps), tvq = r2(est * CFG.tauxTvq);
+    var sous = r2(total - tps - tvq);
+    var base = CFG.baseRatio === 'TOTAL' ? total : sous;
+    var eq = r2(base * pct / 100);
+    return { total: total, sous: sous, tps: tps, tvq: tvq, equipe: eq, joueur: r2(base - eq) };
+  }
+  function montant(){ return Number(String($('montant').value).replace(/\s|\$/g,'').replace(',', '.')) || 0; }
+
+  function petit(){ var m = montant(); return m > 0 && m <= CFG.seuil100; }
+  function pctEffectif(){ return petit() ? 100 : Number($('pctEquipe').value); }
+
+  function maj(){
+    var p = petit(), pct = pctEffectif();
+    $('ratioBox').classList.toggle('off', p);
+    $('seuilMsg').hidden = !p;
+    $('pctLbl').textContent = pct;
+    $('pctE').textContent = pct; $('pctJ').textContent = 100 - pct;
+  }
+
+  function equipeChoisie(){ var r = document.querySelector('input[name=equipe]:checked'); return r ? r.value : ''; }
+
+  function remplirJoueurs(){
+    var eq = CFG.equipes.filter(function(e){ return e.nom === equipeChoisie(); })[0];
+    var s = $('joueurSel');
+    s.innerHTML = '<option value="">Choisis le joueur</option>';
+    (eq ? eq.joueurs : []).forEach(function(j){ var o = document.createElement('option'); o.value = o.textContent = j; s.appendChild(o); });
+    var a = document.createElement('option'); a.value = '__autre'; a.textContent = 'Autre / nouveau joueur…'; s.appendChild(a);
+    $('autreWrap').hidden = true;
+  }
+
+  function init(cfg){
+    CFG = cfg;
+    
+    $('description').value = cfg.description;
+    $('minLbl').textContent = cfg.pctMin;
+    var r = $('pctEquipe'); r.min = cfg.pctMin; r.value = cfg.pctMin;
+    $('seuilLbl').textContent = argent(cfg.seuil100).replace(',00', '');
+    $('regle').innerHTML = 'Commandite de <b>' + $('seuilLbl').textContent + ' et moins</b> : 100 % à l’équipe. ' +
+      'Au-dessus : au moins <b>' + cfg.pctMin + ' %</b> à l’équipe, le reste au joueur.';
+    $('testbar').hidden = !cfg.modeTest;
+    var box = $('equipes');
+    cfg.equipes.forEach(function(e, i){
+      var id = 'eq' + i;
+      box.insertAdjacentHTML('beforeend',
+        '<input type="radio" name="equipe" id="' + id + '" value="' + e.nom.replace(/"/g,'&quot;') + '"><label for="' + id + '">' + e.nom.replace(/</g,'&lt;') + '</label>');
+    });
+    box.addEventListener('change', remplirJoueurs);
+    if (cfg.equipes.length === 1) { box.querySelector('input').checked = true; remplirJoueurs(); }
+    maj();
+  }
+
+  $('joueurSel').addEventListener('change', function(){
+    var autre = this.value === '__autre';
+    $('autreWrap').hidden = !autre;
+    if (autre) $('joueurAutre').focus();
+  });
+  $('montant').addEventListener('input', maj);
+  $('pctEquipe').addEventListener('input', maj);
+  $('codePostal').addEventListener('input', function(){
+    var v = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+    this.value = v.length > 3 ? v.slice(0,3) + ' ' + v.slice(3) : v;
+  });
+
+  // --- Logo ---
+  var drop = $('drop'), fi = $('logo');
+  drop.addEventListener('click', function(){ fi.click(); });
+  drop.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fi.click(); } });
+  ['dragenter','dragover'].forEach(function(t){ drop.addEventListener(t, function(e){ e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave','drop'].forEach(function(t){ drop.addEventListener(t, function(e){ e.preventDefault(); drop.classList.remove('over'); }); });
+  drop.addEventListener('drop', function(e){ if (e.dataTransfer.files[0]) choisirLogo(e.dataTransfer.files[0]); });
+  fi.addEventListener('change', function(){ if (fi.files[0]) choisirLogo(fi.files[0]); });
+
+  function choisirLogo(f){
+    if (f.size > 8 * 1024 * 1024) { erreur('Le logo dépasse 8 Mo.'); return; }
+    logoFile = f;
+    var img = $('preview');
+    if (/^image\/(png|jpeg|svg\+xml|webp)$/.test(f.type)) { img.src = URL.createObjectURL(f); img.hidden = false; }
+    else img.hidden = true;
+    $('dropTxt').innerHTML = '<b>' + f.name.replace(/</g,'&lt;') + '</b><br><span style="font-size:13px">Clique pour changer</span>';
+  }
+
+  function lireBase64(f){
+    return new Promise(function(ok, ko){
+      var r = new FileReader();
+      r.onload = function(){ ok(String(r.result).split(',')[1]); };
+      r.onerror = ko; r.readAsDataURL(f);
+    });
+  }
+
+  // --- Validation ---
+  function erreur(msg){ var e = $('err'); e.textContent = msg; e.style.display = msg ? 'block' : 'none'; if (msg) e.scrollIntoView({behavior:'smooth', block:'center'}); }
+
+  function valider(){
+    var manque = [];
+    if (!equipeChoisie()) manque.push('l’équipe');
+    var j = $('joueurSel').value === '__autre' ? $('joueurAutre').value.trim() : $('joueurSel').value;
+    if (!j) manque.push('le joueur');
+    ['parentNom','commanditaire','adresse','ville'].forEach(function(id){ if (!$(id).value.trim()) manque.push($(id).labels[0].childNodes[0].textContent.trim().toLowerCase()); });
+    var pc = $('parentCourriel').value.trim(), cp = $('codePostal').value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(pc)) manque.push('le courriel du parent (valide)');
+    if (!/^[A-Z]\d[A-Z] ?\d[A-Z]\d$/.test(cp)) manque.push('le code postal (ex. J1H 1A1)');
+    if ($('courriel').value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test($('courriel').value.trim())) manque.push('le courriel du commanditaire (invalide)');
+    if (!(montant() > 0)) manque.push('le montant');
+    if (!$('confirme').checked) manque.push('la case de confirmation');
+    return { joueur: j, manque: manque };
+  }
+
+  // --- Soumission ---
+  $('f').addEventListener('submit', function(e){
+    e.preventDefault();
+    var v = valider();
+    if (v.manque.length) { erreur('Il manque : ' + v.manque.join(', ') + '.'); return; }
+    erreur('');
+    var data = {
+      equipe: equipeChoisie(), joueur: v.joueur,
+      montant: montant(), pctEquipe: pctEffectif(),
+      siteWebConfirm: $('siteWebConfirm').value
+    };
+    ['parentNom','parentCourriel','parentTel','commanditaire','contact','adresse','ville','province',
+     'codePostal','telephone','courriel','siteWeb','description','notes'].forEach(function(k){ data[k] = $(k).value.trim(); });
+
+    $('go').disabled = true; $('ov').style.display = 'grid';
+    (logoFile ? lireBase64(logoFile) : Promise.resolve(null))
+      .then(function(b64){
+        if (b64) data.logo = { nom: logoFile.name, type: logoFile.type, base64: b64 };
+        return appel('submitCommandite', data);
+      })
+      .then(function(res){ succes(res, data); })
+      .catch(function(err){ erreur((err && err.message) ? err.message.replace(/^Error:\s*/,'') : 'Erreur inconnue. Réessaie.'); })
+      .then(function(){ $('go').disabled = false; $('ov').style.display = 'none'; });
+  });
+
+  function succes(res, data){
+    dernier = res;
+    $('sNo').textContent = res.no; $('sCom').textContent = data.commanditaire;
+    $('sTot').textContent = argent(res.total);
+    $('sRep').textContent = data.pctEquipe >= 100 ? '100 % équipe' : 'Équipe ' + data.pctEquipe + ' % · Joueur ' + (100 - data.pctEquipe) + ' %';
+    if (res.test) $('sNo').textContent = res.no + ' (test)';
+    var m = res.courriels || {};
+    $('sMail').textContent = m.parent
+      ? 'Une copie a été envoyée à ' + data.parentCourriel + (m.gerante ? ' et à la gérante.' : '.')
+      : 'Le courriel n’a pas pu être envoyé — télécharge le PDF et transmets-le à la gérante.';
+    $('f').hidden = true; $('succes').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    telecharger();
+  }
+
+  function telecharger(){
+    if (!dernier) return;
+    var bin = atob(dernier.pdfBase64), u = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([u], { type: 'application/pdf' }));
+    var a = document.createElement('a'); a.href = url; a.download = dernier.nomFichier;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 10000);
+  }
+  $('dl').addEventListener('click', telecharger);
+
+  $('encore').addEventListener('click', function(){
+    // Garde équipe, joueur et parent; vide le commanditaire
+    ['commanditaire','contact','adresse','ville','codePostal','telephone','courriel','siteWeb','notes','montant'].forEach(function(k){ $(k).value = ''; });
+    $('province').value = 'QC'; $('confirme').checked = false;
+    logoFile = null; fi.value = ''; $('preview').hidden = true;
+    $('dropTxt').innerHTML = '<b>Clique ici</b> ou glisse le fichier du logo';
+    $('pctEquipe').value = CFG.pctMin; maj();
+    $('succes').style.display = 'none'; $('f').hidden = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    $('commanditaire').focus();
+  });
+
+  $('equipes').innerHTML = '<span class="hint" id="chargement">Chargement des équipes…</span>';
+  appel('getFormConfig').then(function(cfg){ $('equipes').innerHTML = ''; init(cfg); }).catch(function(e){ erreur('Impossible de charger le formulaire : ' + (e && e.message || e)); });
+})();
+</script>
+</body>
+</html>

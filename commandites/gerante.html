@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Espace gérante — Aigles D3</title>
+<style>
+  :root{
+    --navy:#7a1426; --navy-2:#5a0e1c; --gold:#f5a800; --gold-soft:#fff3d6;
+    --bg:#0d0d0f; --card:#fff; --ink:#18212f; --muted:#5d6878; --line:#d9dee7;
+    --err:#b42318; --ok:#127a43; --ok-soft:#e3f4ea; --r:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+  header{background:#0d0d0f;color:#fff;padding:22px 16px 26px;position:relative;border-bottom:1px solid #2c2830}
+  header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:var(--gold)}
+  .wrap{max-width:900px;margin:0 auto}
+  header small{letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:700;font-size:12px}
+  header h1{margin:4px 0 0;font-size:26px}
+  header .top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+  header a{color:#c8d3e6;font-size:14px}
+  main{max-width:900px;margin:18px auto 40px;padding:0 16px}
+  .card{background:var(--card);border-radius:var(--r);box-shadow:0 1px 2px rgba(11,37,69,.06),0 8px 24px rgba(11,37,69,.06);padding:20px}
+  label{display:block;font-size:14px;font-weight:600;margin-bottom:5px}
+  input,select{width:100%;font:inherit;color:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff}
+  input:focus,select:focus{outline:none;border-color:var(--navy-2);box-shadow:0 0 0 3px rgba(122,20,38,.15)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:10px 16px;
+       font:inherit;font-weight:700;cursor:pointer;background:var(--navy);color:#fff;white-space:nowrap}
+  .btn:hover{background:var(--navy-2)}
+  .btn.gold{background:var(--gold);color:var(--navy)}
+  .btn.ghost{background:transparent;color:var(--navy);border:1.5px solid var(--navy)}
+  .btn.sm{padding:8px 12px;font-size:14px}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .err{background:#fdecea;color:var(--err);border-radius:10px;padding:10px 12px;margin:12px 0 0;display:none;font-size:14px}
+  #login{max-width:420px;margin:30px auto}
+  #login .row{display:flex;gap:8px;margin-top:6px}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  .seg{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+  .seg button{border:0;background:transparent;font:inherit;font-size:14px;font-weight:600;padding:7px 12px;border-radius:8px;cursor:pointer;color:var(--muted)}
+  .seg button.on{background:var(--navy);color:#fff}
+  .bar input{flex:1;min-width:180px}
+  .stats{color:#bdb5b7;font-size:14px;margin:-4px 0 12px}
+  .list{display:grid;gap:10px}
+  .item{background:#fff;border-radius:12px;padding:14px 16px;display:grid;grid-template-columns:1fr auto;gap:6px 16px;align-items:center;
+        box-shadow:0 1px 2px rgba(11,37,69,.06)}
+  .item .who{font-weight:700;font-size:17px}
+  .item .meta{color:var(--muted);font-size:14px}
+  .item .amt{font-weight:800;font-size:18px;text-align:right;color:var(--navy)}
+  .item .act{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+  .badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:#eef1f6;color:var(--muted)}
+  .badge.ok{background:var(--ok-soft);color:var(--ok)}
+  .badge.pay{background:var(--gold-soft);color:#7a5c00}
+  .badge.test{background:#fdecea;color:var(--err)}
+  .empty{text-align:center;color:#bdb5b7;padding:30px}
+  @media (max-width:560px){ .item{grid-template-columns:1fr} .item .amt{text-align:left} .item .act{justify-content:flex-start} }
+  /* modal */
+  .ov{position:fixed;inset:0;background:rgba(13,13,15,.7);display:none;align-items:flex-start;justify-content:center;padding:24px 16px;overflow:auto;z-index:10}
+  .ov.open{display:flex}
+  .modal{background:#fff;border-radius:14px;max-width:460px;width:100%;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+  .modal h2{margin:0;font-size:19px}
+  .modal .sub{color:var(--muted);font-size:14px;margin:2px 0 14px}
+  .modal .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .modal .full{grid-column:1/-1}
+  .check{display:flex;gap:10px;align-items:center;font-weight:400;font-size:14px;margin:0}
+  .check input{width:18px;height:18px;flex:none}
+  .warn{background:#fff4e5;border-radius:8px;padding:8px 10px;font-size:14px;margin-bottom:12px}
+  .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+  .done{text-align:center;padding:6px 0}
+  .done .ic{width:52px;height:52px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;font-size:26px;margin:0 auto 8px}
+  .done p{white-space:pre-line;color:var(--muted);font-size:14px}
+  .modal.wide{max-width:620px}
+  .sec{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);margin:14px 0 2px;grid-column:1/-1}
+  .note{font-size:13px;color:var(--muted);grid-column:1/-1;margin-top:-4px}
+  @media (max-width:560px){ .modal .grid{grid-template-columns:1fr} }
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap top">
+    <div><small>Aigles D3 · Commandites</small><h1>Espace gérante</h1></div>
+    <div><a href="./" target="_blank">Formulaire des parents ↗</a> <span id="out" hidden>· <a href="#" id="logout">Se déconnecter</a></span></div>
+  </div>
+</header>
+
+<main>
+  <!-- Connexion -->
+  <section class="card" id="login">
+    <label for="code">Code gérante</label>
+    <form class="row" id="loginForm">
+      <input id="code" type="password" autocomplete="off" required>
+      <button class="btn" id="loginBtn">Entrer</button>
+    </form>
+    <div class="err" id="loginErr"></div>
+  </section>
+
+  <!-- Liste -->
+  <section id="app" hidden>
+    <div class="bar">
+      <button class="btn gold" id="add" type="button">+ Ajouter une facture</button>
+      <div class="seg" id="fEquipe"><button data-v="" class="on">Toutes</button></div>
+      <div class="seg" id="fStatut">
+        <button data-v="attente" class="on">Reçu à émettre</button><button data-v="emis">Reçu émis</button><button data-v="">Toutes</button>
+      </div>
+      <input id="q" type="search" placeholder="Rechercher (commanditaire, joueur, n°)">
+      <button class="btn ghost sm" id="refresh" title="Rafraîchir">↻</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="list" id="list"></div>
+    <div class="err" id="listErr"></div>
+  </section>
+</main>
+
+<!-- Fenêtre reçu -->
+<div class="ov" id="ov" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="modal">
+    <div id="mForm">
+      <h2 id="mTitle">Reçu</h2>
+      <div class="sub" id="mSub"></div>
+      <div class="warn" id="mWarn" hidden></div>
+      <div class="grid">
+        <div><label for="mDate">Date du paiement</label><input id="mDate" type="date"></div>
+        <div><label for="mMode">Mode</label>
+          <select id="mMode"><option>Virement Interac</option><option>Chèque</option><option>Argent comptant</option><option>Autre</option></select></div>
+        <div class="full"><label for="mRef">N° de chèque / référence <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label><input id="mRef"></div>
+        <label class="check full"><input type="checkbox" id="mEnv" checked> Envoyer le reçu par courriel</label>
+        <div class="full" id="mDestWrap"><label for="mDest">Envoyer à</label><input id="mDest" type="email"></div>
+        <label class="check full" id="mCpWrap"><input type="checkbox" id="mCp" checked> <span id="mCpTxt">Copie au parent</span></label>
+      </div>
+      <div class="err" id="mErr"></div>
+      <div class="actions">
+        <button class="btn ghost" id="mCancel" type="button">Annuler</button>
+        <button class="btn" id="mGo" type="button">Émettre le reçu</button>
+      </div>
+    </div>
+    <div id="mDone" class="done" hidden>
+      <div class="ic">✓</div>
+      <h2 id="dTitle"></h2>
+      <p id="dMsg"></p>
+      <div class="actions" style="justify-content:center">
+        <button class="btn gold" id="dDl" type="button">⬇ Télécharger le PDF</button>
+        <button class="btn ghost" id="dClose" type="button">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Fenêtre ajout -->
+<div class="ov" id="ovA" role="dialog" aria-modal="true" aria-labelledby="aTitle">
+  <div class="modal wide">
+    <div id="aForm">
+      <h2 id="aTitle">Ajouter une facture</h2>
+      <div class="sub">Pour une commandite déjà conclue. Aucun courriel n’est envoyé sauf si tu coches les cases.</div>
+      <div class="grid">
+        <div class="sec">Facture</div>
+        <div><label for="a_equipe">Équipe</label><select id="a_equipe"></select></div>
+        <div><label for="a_joueurSel">Joueur</label><select id="a_joueurSel"></select></div>
+        <div class="full" id="a_autreWrap" hidden><label for="a_joueurAutre">Nom du joueur</label><input id="a_joueurAutre"></div>
+        <div><label for="a_noExistant">N° déjà émis <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label>
+          <input id="a_noExistant" inputmode="numeric" placeholder="Vide = prochain numéro"></div>
+        <div><label for="a_dateFacture">Date de la facture</label><input id="a_dateFacture" type="date"></div>
+
+        <div class="sec">Commanditaire</div>
+        <div class="full"><label for="a_commanditaire">Nom de l’entreprise</label><input id="a_commanditaire"></div>
+        <div><label for="a_contact">Personne contact</label><input id="a_contact"></div>
+        <div><label for="a_telephone">Téléphone</label><input id="a_telephone" type="tel"></div>
+        <div class="full"><label for="a_courriel">Courriel</label><input id="a_courriel" type="email"></div>
+        <div class="full"><label for="a_adresse">Adresse</label><input id="a_adresse"></div>
+        <div><label for="a_ville">Ville</label><input id="a_ville"></div>
+        <div style="display:grid;grid-template-columns:80px 1fr;gap:10px">
+          <div><label for="a_province">Prov.</label><input id="a_province" maxlength="2" value="QC"></div>
+          <div><label for="a_codePostal">Code postal</label><input id="a_codePostal" maxlength="7"></div>
+        </div>
+        <div class="full"><label for="a_logo">Logo <span style="font-weight:400;color:var(--muted)">(optionnel, max 8 Mo)</span></label>
+          <input id="a_logo" type="file" accept=".png,.jpg,.jpeg,.svg,.webp,.pdf,.ai,.eps"></div>
+
+        <div class="sec">Montant</div>
+        <div><label for="a_montant">Montant total ($)</label><input id="a_montant" inputmode="decimal"></div>
+        <div><label for="a_pctEquipe">% équipe</label><input id="a_pctEquipe" type="number" step="5"></div>
+        <div class="note" id="aRegle"></div>
+        <div class="full"><label for="a_description">Description sur la facture</label><input id="a_description"></div>
+
+        <div class="sec">Parent <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optionnel)</span></div>
+        <div><label for="a_parentNom">Nom</label><input id="a_parentNom"></div>
+        <div><label for="a_parentCourriel">Courriel</label><input id="a_parentCourriel" type="email"></div>
+
+        <div class="sec">Paiement et courriels</div>
+        <label class="check full"><input type="checkbox" id="a_dejaPaye"> Déjà payé</label>
+        <div id="a_pmtWrap" hidden><label for="a_datePmt">Date du paiement</label><input id="a_datePmt" type="date"></div>
+        <div id="a_modeWrap" hidden><label for="a_modePmt">Mode</label>
+          <select id="a_modePmt"><option>Virement Interac</option><option>Chèque</option><option>Argent comptant</option><option>Autre</option></select></div>
+        <label class="check full"><input type="checkbox" id="a_envoyerParent"> Envoyer la facture au parent</label>
+        <label class="check full"><input type="checkbox" id="a_envoyerGerante"> M’envoyer une copie (courriel gérante)</label>
+        <div class="full"><label for="a_notes">Notes <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label><input id="a_notes"></div>
+      </div>
+      <div class="err" id="aErr"></div>
+      <div class="actions">
+        <button class="btn ghost" id="aCancel" type="button">Annuler</button>
+        <button class="btn" id="aGo" type="button">Créer la facture</button>
+      </div>
+    </div>
+    <div id="aDone" class="done" hidden>
+      <div class="ic">✓</div>
+      <h2 id="adTitle"></h2>
+      <p id="adMsg"></p>
+      <div class="actions" style="justify-content:center;flex-wrap:wrap">
+        <button class="btn gold" id="adDl" type="button">⬇ Télécharger la facture</button>
+        <button class="btn ghost" id="adEncore" type="button">Ajouter une autre</button>
+        <button class="btn ghost" id="adClose" type="button">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Fenêtre modification -->
+<div class="ov" id="ovE" role="dialog" aria-modal="true" aria-labelledby="eTitle">
+  <div class="modal wide">
+    <div id="eForm">
+      <h2 id="eTitle">Modifier la facture</h2>
+      <div class="sub" id="eSub"></div>
+      <div class="warn" id="eWarn" hidden></div>
+      <div class="grid">
+        <div class="sec">Commanditaire</div>
+        <div class="full"><label for="e_commanditaire">Nom de l’entreprise</label><input id="e_commanditaire"></div>
+        <div><label for="e_contact">Personne contact</label><input id="e_contact"></div>
+        <div><label for="e_telephone">Téléphone</label><input id="e_telephone" type="tel"></div>
+        <div class="full"><label for="e_courriel">Courriel</label><input id="e_courriel" type="email"></div>
+        <div class="full"><label for="e_adresse">Adresse</label><input id="e_adresse"></div>
+        <div><label for="e_ville">Ville</label><input id="e_ville"></div>
+        <div style="display:grid;grid-template-columns:80px 1fr;gap:10px">
+          <div><label for="e_province">Prov.</label><input id="e_province" maxlength="2"></div>
+          <div><label for="e_codePostal">Code postal</label><input id="e_codePostal" maxlength="7"></div>
+        </div>
+        <div class="sec">Montant</div>
+        <div><label for="e_montant">Montant total ($)</label><input id="e_montant" inputmode="decimal"></div>
+        <div><label for="e_pctEquipe">% équipe</label><input id="e_pctEquipe" type="number" step="5"></div>
+        <div class="note" id="eRegle"></div>
+        <div class="full"><label for="e_description">Description sur la facture</label><input id="e_description"></div>
+        <div class="sec">Parent</div>
+        <div><label for="e_parentNom">Nom</label><input id="e_parentNom"></div>
+        <div><label for="e_parentCourriel">Courriel</label><input id="e_parentCourriel" type="email"></div>
+        <div class="sec">Après l’enregistrement</div>
+        <label class="check full"><input type="checkbox" id="eEnvP"> Renvoyer la facture corrigée au parent</label>
+        <label class="check full"><input type="checkbox" id="eEnvG"> M’envoyer une copie (courriel gérante)</label>
+      </div>
+      <div class="err" id="eErr"></div>
+      <div class="actions">
+        <button class="btn ghost" id="eCancel" type="button">Annuler</button>
+        <button class="btn" id="eGo" type="button">Enregistrer et régénérer</button>
+      </div>
+    </div>
+    <div id="eDone" class="done" hidden>
+      <div class="ic">✓</div>
+      <h2 id="edTitle"></h2>
+      <p id="edMsg"></p>
+      <div class="actions" style="justify-content:center">
+        <button class="btn gold" id="edDl" type="button">⬇ Télécharger la facture</button>
+        <button class="btn ghost" id="edClose" type="button">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // URL /exec du déploiement Apps Script
+  var API_URL = 'https://script.google.com/macros/s/AKfycbxyvYo_v8g4UXGDKRPqfN49eACqys3MlAhROFyZleTzIZoiloMdJbGHfgWFuQL2-qMV/exec';
+
+  var $ = function(id){ return document.getElementById(id); };
+  var CODE = '', DATA = [], CFG = null, REG = { pctMin: 30, seuil: 250 }, courant = null, dernierPdf = null, edite = null, derniereFacture = null;
+  var filtre = { equipe: '', statut: 'attente', q: '' };
+
+
+  function api(action, extra){
+    var body = Object.assign({ action: action, code: CODE }, extra || {});
+    return fetch(API_URL, { method: 'POST', credentials: 'omit', redirect: 'follow', body: JSON.stringify(body) })
+      .then(function(r){ if (!r.ok) throw new Error('Serveur indisponible (' + r.status + ').'); return r.json(); })
+      .then(function(j){ if (!j.ok) throw new Error(j.error); return j.data; });
+  }
+
+  function argent(n){
+    var p = (Math.round((Number(n) + Number.EPSILON) * 100) / 100).toFixed(2).split('.');
+    return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ',' + p[1] + ' $';
+  }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function aujourdhui(){ var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+  function montrerErr(id, msg){ var e = $(id); e.textContent = msg || ''; e.style.display = msg ? 'block' : 'none'; }
+
+  /* ---------- Connexion ---------- */
+  function charger(){
+    $('refresh').disabled = true;
+    if (!CFG) api('config').then(function(c){ CFG = c; }).catch(function(){});
+    return api('listeFactures').then(function(res){
+      var rows = res.factures; REG = { pctMin: res.pctMin, seuil: res.seuil };
+      DATA = rows; montrerErr('listErr', '');
+      var eqs = []; rows.forEach(function(r){ if (r.equipe && eqs.indexOf(r.equipe) === -1) eqs.push(r.equipe); });
+      var seg = $('fEquipe');
+      seg.innerHTML = '<button data-v="">Toutes</button>' + eqs.sort().map(function(e){ return '<button data-v="' + esc(e) + '">' + esc(e.replace(/^Aigles\s*/, '')) + '</button>'; }).join('');
+      marquer(seg, filtre.equipe);
+      afficher();
+    }).finally(function(){ $('refresh').disabled = false; });
+  }
+
+  $('loginForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    CODE = $('code').value.trim(); if (!CODE) return;
+    $('loginBtn').disabled = true; montrerErr('loginErr', '');
+    charger().then(function(){
+      $('login').hidden = true; $('app').hidden = false; $('out').hidden = false; relancer();
+    }).catch(function(err){ montrerErr('loginErr', err.message); })
+      .finally(function(){ $('loginBtn').disabled = false; });
+  });
+  // Déconnexion : efface le code en mémoire et la liste affichée
+  function deconnecter(msg){
+    CODE = ''; DATA = []; CFG = null; $('code').value = ''; $('list').innerHTML = '';
+    ['ov','ovA','ovE'].forEach(function(id){ $(id).classList.remove('open'); });
+    $('app').hidden = true; $('out').hidden = true; $('login').hidden = false;
+    montrerErr('loginErr', msg || ''); $('code').focus();
+  }
+  $('logout').addEventListener('click', function(e){ e.preventDefault(); deconnecter(); });
+
+  // Verrouillage automatique après 20 minutes sans activité
+  var INACTIF_MS = 20 * 60 * 1000, minuterie = null;
+  function relancer(){
+    clearTimeout(minuterie);
+    if (CODE) minuterie = setTimeout(function(){ deconnecter('Session verrouillée après 20 minutes d’inactivité.'); }, INACTIF_MS);
+  }
+  ['click','keydown','input','scroll','touchstart'].forEach(function(ev){ document.addEventListener(ev, relancer, { passive: true }); });
+
+  /* ---------- Filtres et liste ---------- */
+  function marquer(seg, v){ Array.prototype.forEach.call(seg.children, function(b){ b.classList.toggle('on', b.getAttribute('data-v') === v); }); }
+  $('fEquipe').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; filtre.equipe = b.getAttribute('data-v'); marquer(this, filtre.equipe); afficher(); });
+  $('fStatut').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; filtre.statut = b.getAttribute('data-v'); marquer(this, filtre.statut); afficher(); });
+  $('q').addEventListener('input', function(){ filtre.q = this.value.trim().toLowerCase(); afficher(); });
+  $('refresh').addEventListener('click', function(){ charger().catch(function(err){ montrerErr('listErr', err.message); }); });
+
+  function afficher(){
+    var rows = DATA.filter(function(r){
+      if (filtre.equipe && r.equipe !== filtre.equipe) return false;
+      if (filtre.statut === 'attente' && r.recu) return false;
+      if (filtre.statut === 'emis' && !r.recu) return false;
+      if (filtre.q && (r.commanditaire + ' ' + r.joueur + ' ' + r.no).toLowerCase().indexOf(filtre.q) === -1) return false;
+      return true;
+    });
+    var total = rows.reduce(function(s, r){ return s + r.montant; }, 0);
+    $('stats').textContent = rows.length + ' facture' + (rows.length > 1 ? 's' : '') + ' · ' + argent(total);
+    if (!rows.length) { $('list').innerHTML = '<div class="empty">Aucune facture pour ces filtres.</div>'; return; }
+    $('list').innerHTML = rows.map(function(r){
+      var badge = r.recu ? '<span class="badge ok">Reçu émis ' + esc(r.recu) + '</span>'
+        : r.paye ? '<span class="badge pay">Payé ' + esc(r.paye) + ' — reçu à émettre</span>'
+        : '<span class="badge">En attente de paiement</span>';
+      if (/^TEST/i.test(r.no)) badge += ' <span class="badge test">TEST</span>';
+      return '<div class="item">' +
+        '<div><div class="meta">N° ' + esc(r.no) + ' · ' + esc(r.date) + ' · ' + esc(r.equipe) + '</div>' +
+          '<div class="who">' + esc(r.commanditaire) + '</div>' +
+          '<div class="meta">Joueur : ' + esc(r.joueur) + '</div><div style="margin-top:6px">' + badge + '</div></div>' +
+        '<div><div class="amt">' + argent(r.montant) + '</div>' +
+          '<div class="act" style="margin-top:8px"><button class="btn sm ghost" data-e="' + r.r + '">Modifier</button>' +
+          '<button class="btn sm ' + (r.recu ? 'ghost' : '') + '" data-r="' + r.r + '">' +
+          (r.recu ? 'Refaire le reçu' : 'Émettre le reçu') + '</button></div></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  $('list').addEventListener('click', function(e){
+    var be = e.target.closest('button[data-e]');
+    if (be) { var re = Number(be.getAttribute('data-e')); return ouvrirEdition(DATA.filter(function(x){ return x.r === re; })[0]); }
+    var b = e.target.closest('button[data-r]'); if (!b) return;
+    var r = Number(b.getAttribute('data-r'));
+    ouvrir(DATA.filter(function(x){ return x.r === r; })[0]);
+  });
+
+  /* ---------- Fenêtre reçu ---------- */
+  function ouvrir(f){
+    if (!f) return;
+    courant = f;
+    $('mTitle').textContent = 'Reçu — facture ' + f.no;
+    $('mSub').textContent = f.commanditaire + ' · ' + argent(f.montant) + ' · ' + f.joueur;
+    $('mWarn').hidden = !f.recu;
+    $('mWarn').textContent = f.recu ? '⚠ Un reçu a déjà été émis le ' + f.recu + '. Il sera remplacé.' : '';
+    $('mDate').value = f.paye || aujourdhui();
+    var modes = Array.prototype.map.call($('mMode').options, function(o){ return o.value; });
+    var m = (f.mode || '').split(' #')[0];
+    $('mMode').value = modes.indexOf(m) > -1 ? m : 'Virement Interac';
+    $('mRef').value = (f.mode || '').indexOf(' #') > -1 ? f.mode.split(' #')[1] : '';
+    $('mDest').value = f.courriel || f.parentCourriel || '';
+    $('mEnv').checked = true;
+    majCopie();
+    montrerErr('mErr', '');
+    $('mForm').hidden = false; $('mDone').hidden = true;
+    $('ov').classList.add('open');
+    $('mDate').focus();
+  }
+  function majCopie(){
+    var env = $('mEnv').checked, pc = courant && courant.parentCourriel;
+    $('mDestWrap').hidden = !env;
+    var montrer = env && pc && pc.toLowerCase() !== $('mDest').value.trim().toLowerCase();
+    $('mCpWrap').hidden = !montrer;
+    if (montrer) $('mCpTxt').textContent = 'Copie au parent (' + pc + ')';
+  }
+  $('mEnv').addEventListener('change', majCopie);
+  $('mDest').addEventListener('input', majCopie);
+
+  function fermer(){ $('ov').classList.remove('open'); courant = null; }
+  $('mCancel').addEventListener('click', fermer);
+  $('dClose').addEventListener('click', fermer);
+  $('ov').addEventListener('click', function(e){ if (e.target === this && !$('mGo').disabled) fermer(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('ov').classList.contains('open') && !$('mGo').disabled) fermer(); });
+
+  $('mGo').addEventListener('click', function(){
+    var env = $('mEnv').checked, dest = $('mDest').value.trim();
+    if (!$('mDate').value) return montrerErr('mErr', 'Indique la date du paiement.');
+    if (env && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(dest)) return montrerErr('mErr', 'Courriel du destinataire invalide.');
+    montrerErr('mErr', '');
+    var btn = this; btn.disabled = true; btn.textContent = 'Création du reçu…';
+    api('emettreRecu', { data: {
+      r: courant.r, no: courant.no, date: $('mDate').value, mode: $('mMode').value, ref: $('mRef').value.trim(),
+      dest: dest, envoyer: env, copieParent: !$('mCpWrap').hidden && $('mCp').checked
+    }}).then(function(res){
+      dernierPdf = res;
+      $('dTitle').textContent = 'Reçu ' + res.no + ' émis';
+      $('dMsg').textContent = 'Courriel : ' + res.envoi;
+      $('mForm').hidden = true; $('mDone').hidden = false;
+      charger().catch(function(){});
+    }).catch(function(err){ montrerErr('mErr', err.message); })
+      .finally(function(){ btn.disabled = false; btn.textContent = 'Émettre le reçu'; });
+  });
+
+  function telecharger(res){
+    if (!res) return;
+    var bin = atob(res.pdfBase64), u = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([u], { type: 'application/pdf' }));
+    var a = document.createElement('a'); a.href = url; a.download = res.nomFichier;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 10000);
+  }
+  $('dDl').addEventListener('click', function(){ telecharger(dernierPdf); });
+
+  /* ---------- Fenêtre modification ---------- */
+  var CHAMPS = ['commanditaire','contact','telephone','courriel','adresse','ville','province','codePostal','montant','pctEquipe','description','parentNom','parentCourriel'];
+  function ouvrirEdition(f){
+    if (!f) return;
+    edite = f;
+    $('eTitle').textContent = 'Modifier la facture ' + f.no;
+    $('eSub').textContent = f.equipe + ' · ' + f.joueur + ' · ' + f.date;
+    $('eWarn').hidden = !f.recu;
+    $('eWarn').textContent = f.recu ? '⚠ Un reçu a déjà été émis le ' + f.recu + '. Si le montant change, refais aussi le reçu.' : '';
+    CHAMPS.forEach(function(k){ $('e_' + k).value = f[k] == null ? '' : f[k]; });
+    $('e_montant').value = String(f.montant).replace('.', ',');
+    $('e_pctEquipe').min = REG.pctMin; $('e_pctEquipe').max = 100;
+    $('eEnvP').checked = false; $('eEnvG').checked = false;
+    majRegle();
+    montrerErr('eErr', '');
+    $('eForm').hidden = false; $('eDone').hidden = true;
+    $('ovE').classList.add('open');
+    $('e_commanditaire').focus();
+  }
+  function montantE(){ return Number(String($('e_montant').value).replace(/\s|\$/g, '').replace(',', '.')) || 0; }
+  function majRegle(){
+    var petit = montantE() > 0 && montantE() <= REG.seuil;
+    $('e_pctEquipe').disabled = petit;
+    if (petit) $('e_pctEquipe').value = 100;
+    $('eRegle').textContent = petit ? REG.seuil + ' $ et moins : 100 % à l’équipe.' : 'Minimum ' + REG.pctMin + ' % à l’équipe.';
+  }
+  $('e_montant').addEventListener('input', majRegle);
+  $('e_codePostal').addEventListener('input', function(){
+    var v = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+    this.value = v.length > 3 ? v.slice(0,3) + ' ' + v.slice(3) : v;
+  });
+
+  function fermerE(){ if ($('eGo').disabled) return; $('ovE').classList.remove('open'); edite = null; }
+  $('eCancel').addEventListener('click', fermerE);
+  $('edClose').addEventListener('click', fermerE);
+  $('ovE').addEventListener('click', function(e){ if (e.target === this) fermerE(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('ovE').classList.contains('open')) fermerE(); });
+
+  $('eGo').addEventListener('click', function(){
+    var champs = {}; CHAMPS.forEach(function(k){ champs[k] = $('e_' + k).value.trim(); });
+    champs.montant = montantE();
+    var em = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, err = [];
+    if (!champs.commanditaire) err.push('le nom du commanditaire');
+    if (!(champs.montant > 0)) err.push('un montant valide');
+    if (champs.montant > REG.seuil && !(Number(champs.pctEquipe) >= REG.pctMin && Number(champs.pctEquipe) <= 100)) err.push('un % équipe entre ' + REG.pctMin + ' et 100');
+    if (champs.courriel && !em.test(champs.courriel)) err.push('un courriel de commanditaire valide');
+    if (($('eEnvP').checked || champs.parentCourriel) && !em.test(champs.parentCourriel)) err.push('un courriel de parent valide');
+    if (err.length) return montrerErr('eErr', 'Il faut ' + err.join(', ') + '.');
+    montrerErr('eErr', '');
+    var btn = this; btn.disabled = true; btn.textContent = 'Régénération…';
+    api('modifierFacture', { data: { r: edite.r, no: edite.no, champs: champs, envoyerParent: $('eEnvP').checked, envoyerGerante: $('eEnvG').checked } })
+      .then(function(res){
+        derniereFacture = res;
+        $('edTitle').textContent = 'Facture ' + res.no + ' régénérée';
+        $('edMsg').textContent = 'Courriels : ' + res.courriels;
+        $('eForm').hidden = true; $('eDone').hidden = false;
+        charger().catch(function(){});
+      })
+      .catch(function(err){ montrerErr('eErr', err.message); })
+      .finally(function(){ btn.disabled = false; btn.textContent = 'Enregistrer et régénérer'; });
+  });
+  $('edDl').addEventListener('click', function(){ telecharger(derniereFacture); });
+
+  /* ---------- Fenêtre ajout ---------- */
+  var addPdf = null;
+  function remplirJoueursA(){
+    var eq = (CFG && CFG.equipes || []).filter(function(e){ return e.nom === $('a_equipe').value; })[0];
+    $('a_joueurSel').innerHTML = '<option value="">Choisis le joueur</option>' +
+      (eq ? eq.joueurs : []).map(function(j){ return '<option>' + esc(j) + '</option>'; }).join('') +
+      '<option value="__autre">Autre / nouveau joueur…</option>';
+    $('a_autreWrap').hidden = true;
+  }
+  function viderA(tout){
+    ['noExistant','commanditaire','contact','telephone','courriel','adresse','ville','codePostal','montant','parentNom','parentCourriel','notes']
+      .forEach(function(k){ $('a_' + k).value = ''; });
+    $('a_logo').value = ''; $('a_province').value = 'QC';
+    $('a_dejaPaye').checked = false; $('a_pmtWrap').hidden = $('a_modeWrap').hidden = true;
+    $('a_envoyerParent').checked = false; $('a_envoyerGerante').checked = false;
+    $('a_dateFacture').value = $('a_datePmt').value = aujourdhui();
+    if (tout) $('a_description').value = (CFG && CFG.description) || '';
+    $('a_pctEquipe').min = REG.pctMin; $('a_pctEquipe').max = 100; $('a_pctEquipe').value = REG.pctMin;
+    majRegleA(); montrerErr('aErr', '');
+    $('aForm').hidden = false; $('aDone').hidden = true;
+  }
+  function ouvrirAjout(){
+    if (!CFG) {
+      $('add').disabled = true; $('add').textContent = 'Chargement…';
+      return api('config').then(function(c){ CFG = c; ouvrirAjout(); })
+        .catch(function(err){ montrerErr('listErr', 'Impossible de charger les équipes : ' + err.message); })
+        .finally(function(){ $('add').disabled = false; $('add').textContent = '+ Ajouter une facture'; });
+    }
+    var sel = $('a_equipe');
+    sel.innerHTML = CFG.equipes.map(function(e){ return '<option>' + esc(e.nom) + '</option>'; }).join('');
+    if (filtre.equipe) sel.value = filtre.equipe;
+    remplirJoueursA(); viderA(true);
+    $('ovA').classList.add('open'); $('a_equipe').focus();
+  }
+  function montantA(){ return Number(String($('a_montant').value).replace(/\s|\$/g, '').replace(',', '.')) || 0; }
+  function majRegleA(){
+    var petit = montantA() > 0 && montantA() <= REG.seuil;
+    $('a_pctEquipe').disabled = petit;
+    if (petit) $('a_pctEquipe').value = 100;
+    else if (Number($('a_pctEquipe').value) === 100 && $('a_pctEquipe').dataset.auto) $('a_pctEquipe').value = REG.pctMin;
+    $('a_pctEquipe').dataset.auto = petit ? '1' : '';
+    $('aRegle').textContent = petit ? REG.seuil + ' $ et moins : 100 % à l’équipe.' : 'Minimum ' + REG.pctMin + ' % à l’équipe.';
+  }
+  $('add').addEventListener('click', ouvrirAjout);
+  $('a_equipe').addEventListener('change', remplirJoueursA);
+  $('a_joueurSel').addEventListener('change', function(){ $('a_autreWrap').hidden = this.value !== '__autre'; if (this.value === '__autre') $('a_joueurAutre').focus(); });
+  $('a_montant').addEventListener('input', majRegleA);
+  $('a_dejaPaye').addEventListener('change', function(){ $('a_pmtWrap').hidden = $('a_modeWrap').hidden = !this.checked; });
+  $('a_codePostal').addEventListener('input', function(){
+    var v = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+    this.value = v.length > 3 ? v.slice(0,3) + ' ' + v.slice(3) : v;
+  });
+  function fermerA(){ if ($('aGo').disabled) return; $('ovA').classList.remove('open'); }
+  $('aCancel').addEventListener('click', fermerA);
+  $('adClose').addEventListener('click', fermerA);
+  $('ovA').addEventListener('click', function(e){ if (e.target === this) fermerA(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('ovA').classList.contains('open')) fermerA(); });
+  $('adEncore').addEventListener('click', function(){ viderA(false); $('a_commanditaire').focus(); });
+  $('adDl').addEventListener('click', function(){ telecharger(addPdf); });
+
+  function lireFichier(f){
+    return new Promise(function(ok, ko){
+      if (!f) return ok(null);
+      if (f.size > 8 * 1024 * 1024) return ko(new Error('Le logo dépasse 8 Mo.'));
+      var r = new FileReader();
+      r.onload = function(){ ok({ nom: f.name, type: f.type, base64: String(r.result).split(',')[1] }); };
+      r.onerror = function(){ ko(new Error('Lecture du logo impossible.')); };
+      r.readAsDataURL(f);
+    });
+  }
+
+  $('aGo').addEventListener('click', function(){
+    var em = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, err = [];
+    var joueur = $('a_joueurSel').value === '__autre' ? $('a_joueurAutre').value.trim() : $('a_joueurSel').value;
+    var d = {
+      codeGerante: CODE, equipe: $('a_equipe').value, joueur: joueur,
+      noExistant: $('a_noExistant').value.trim(), dateFacture: $('a_dateFacture').value,
+      montant: montantA(), pctEquipe: Number($('a_pctEquipe').value),
+      dejaPaye: $('a_dejaPaye').checked, datePmt: $('a_datePmt').value, modePmt: $('a_modePmt').value,
+      envoyerParent: $('a_envoyerParent').checked, envoyerGerante: $('a_envoyerGerante').checked
+    };
+    ['commanditaire','contact','telephone','courriel','adresse','ville','province','codePostal','description','parentNom','parentCourriel','notes']
+      .forEach(function(k){ d[k] = $('a_' + k).value.trim(); });
+    if (!d.joueur) err.push('le joueur');
+    if (!d.commanditaire) err.push('le nom du commanditaire');
+    if (!(d.montant > 0)) err.push('un montant valide');
+    if (d.montant > REG.seuil && !(d.pctEquipe >= REG.pctMin && d.pctEquipe <= 100)) err.push('un % équipe entre ' + REG.pctMin + ' et 100');
+    if (d.courriel && !em.test(d.courriel)) err.push('un courriel de commanditaire valide');
+    if ((d.envoyerParent || d.parentCourriel) && !em.test(d.parentCourriel)) err.push('un courriel de parent valide');
+    if (d.codePostal && !/^[A-Z]\d[A-Z] ?\d[A-Z]\d$/.test(d.codePostal)) err.push('un code postal valide');
+    if (err.length) return montrerErr('aErr', 'Il faut ' + err.join(', ') + '.');
+    montrerErr('aErr', '');
+    var btn = this; btn.disabled = true; btn.textContent = 'Création…';
+    lireFichier($('a_logo').files[0])
+      .then(function(logo){ if (logo) d.logo = logo; return api('submit', { data: d }); })
+      .then(function(res){
+        addPdf = res;
+        $('adTitle').textContent = 'Facture ' + res.no + ' créée';
+        $('adMsg').textContent = 'Courriels — ' + ((res.courriels && res.courriels.resume) || 'aucun');
+        $('aForm').hidden = true; $('aDone').hidden = false;
+        charger().catch(function(){});
+      })
+      .catch(function(err){ montrerErr('aErr', err.message); })
+      .finally(function(){ btn.disabled = false; btn.textContent = 'Créer la facture'; });
+  });
+
+  /* ---------- Démarrage ---------- */
+  // Le code n'est jamais mémorisé : on efface aussi celui d'une ancienne version
+  try { localStorage.removeItem('aiglesCodeGerante'); } catch (e) {}
+  $('code').focus();
+})();
+</script>
+</body>
+</html>
