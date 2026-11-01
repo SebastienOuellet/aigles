@@ -85,13 +85,34 @@
     .grille{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .grille .full{grid-column:1/-1}
     .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+    .groupes{display:inline-flex;background:#17151a;border:1px solid #2c2830;border-radius:12px;padding:4px;gap:4px;flex-wrap:wrap}
+    .groupes button{border:0;background:transparent;color:#bdb5b7;font:inherit;font-weight:700;padding:8px 14px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+    .groupes button.on{background:var(--bordeaux);color:#fff;box-shadow:inset 0 -3px 0 var(--or)}
+    .groupes .n{background:var(--or);color:var(--noir);border-radius:999px;font-size:11px;padding:1px 7px}
+    .filtre-att{border:1.5px dashed #6b5a1e;background:transparent;color:var(--or);border-radius:10px;padding:9px 12px;font:inherit;font-weight:700;cursor:pointer}
+    .filtre-att.on{background:var(--or);color:var(--noir);border-style:solid}
+    .badge.att{background:#ffe0b2;color:#8a4b00}
+    button.nomj{all:unset;cursor:pointer;border-radius:4px}
+    button.nomj:hover b,button.nomj:focus-visible b{text-decoration:underline}
+    .fiche dl{display:grid;grid-template-columns:140px 1fr;gap:6px 12px;margin:0 0 6px;font-size:14px}
+    .fiche dt{color:var(--gris)}
+    .fiche dd{margin:0;font-weight:600;word-break:break-word}
+    .bloc{border-top:1px solid var(--bord);padding-top:14px;margin-top:14px}
+    .bloc h3{margin:0 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--bordeaux)}
+    .ligne-act{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .ligne-act select{padding:9px 10px;border:1.5px solid var(--bord);border-radius:9px;font:inherit}
+    .nam{font-family:ui-monospace,Consolas,monospace;font-size:20px;font-weight:800;letter-spacing:.08em;color:var(--bordeaux);background:#fbe9ec;border-radius:8px;padding:8px 12px;display:inline-block}
+    .ok-msg{color:var(--ok);font-weight:700;font-size:14px}
+    .modal.large{max-width:560px}
+    .fiche input[type=checkbox]{width:auto;accent-color:var(--bordeaux)}
+    .fiche label{margin:0}
     [hidden]{display:none!important}
   </style>
 </head>
 <body>
 <div class="top">
   <div class="wrap">
-    <div><small id="equipe">Aigles · Printemps 2027</small><h1>Gestion des pratiques</h1></div>
+    <div><small id="equipe">Aigles · Printemps 2027</small><h1>Gestion des inscriptions et pratiques</h1></div>
     <div><a href="./" target="_blank">Formulaire des parents ↗</a> <span id="out" hidden>· <a href="#" id="logout">Se déconnecter</a></span></div>
   </div>
 </div>
@@ -105,8 +126,10 @@
 
   <!-- Vue tableau -->
   <section id="vTable" hidden>
+    <div class="bar"><div class="groupes" id="groupes" role="tablist" aria-label="Groupe"></div></div>
     <div class="bar">
       <button class="btn or" id="bAjout" type="button">+ Ajouter une pratique</button>
+      <button class="filtre-att" id="bAtt" type="button" hidden></button>
       <input id="q" type="search" placeholder="Rechercher un joueur">
       <button class="btn ghost" id="bRefresh" type="button" title="Rafraîchir">↻</button>
     </div>
@@ -116,7 +139,7 @@
       <span><span class="pill p-absent">A</span> Absent</span>
       <span><span class="paye oui">$</span> Payé</span>
       <span><span class="paye non">$</span> Pas payé</span>
-      <span>Clique sur une date pour gérer la pratique.</span>
+      <span>Clique sur une date pour gérer la pratique, sur un nom pour sa fiche.</span>
     </div>
     <div class="tbl-wrap"><table id="tbl"></table></div>
     <div class="err" id="eTable"></div>
@@ -141,6 +164,7 @@
 <div class="ov" id="ovA" role="dialog" aria-modal="true" aria-labelledby="aTitre">
   <div class="modal">
     <h2 id="aTitre">Ajouter une pratique</h2>
+    <p id="aGroupe" style="margin:-8px 0 12px;color:var(--gris)"></p>
     <div class="grille">
       <div><label for="aDate">Date</label><input id="aDate" type="date"></div>
       <div><label for="aHeure">Heure</label><input id="aHeure" placeholder="ex. 9 h 00"></div>
@@ -156,12 +180,22 @@
   </div>
 </div>
 
+<!-- Fiche joueur -->
+<div class="ov" id="ovF" role="dialog" aria-modal="true" aria-labelledby="fTitre">
+  <div class="modal large fiche">
+    <h2 id="fTitre">Joueur</h2>
+    <div id="fCorps">Chargement…</div>
+    <div class="err" id="eFiche"></div>
+    <div class="actions"><button class="btn ghost clair" id="fFermer" type="button">Fermer</button></div>
+  </div>
+</div>
+
 <script src="config.js"></script>
 <script>
 (function(){
   const API = window.PRINTEMPS_API;
   const $ = id => document.getElementById(id);
-  let CODE = '', DATA = null, courante = null;
+  let CODE = '', DATA = null, courante = null, groupeCourant = '', filtreAtt = false;
 
   async function api(action, data){
     if (!API || /COLLE_ICI/.test(API)) throw new Error('URL de l’API manquante dans printemps/config.js.');
@@ -184,10 +218,29 @@
   const nomAff = j => '<b>' + esc(j.nom) + '</b>, ' + esc(j.prenom);
 
   async function charger(){
-    DATA = trier(await api('gestion'));
-    $('equipe').textContent = (DATA.equipe || 'Aigles') + ' · Printemps 2027';
-    if (courante) afficherPratique(courante); else afficherTable();
+    DATA = trier(await api('gestion', { groupe: groupeCourant }));
+    groupeCourant = DATA.groupe;
+    $('equipe').textContent = (DATA.club || 'Aigles') + ' · Printemps 2027';
+    afficherGroupes();
+    if (courante && DATA.pratiques.some(p => p.date === courante)) afficherPratique(courante); else afficherTable();
   }
+  const nomGroupe = a => ((DATA.groupes || []).find(g => g.annee === a) || {}).nom || a;
+  function afficherGroupes(){
+    $('groupes').innerHTML = DATA.groupes.map(g => '<button type="button" role="tab" aria-selected="' + (g.annee === groupeCourant) + '" class="' +
+      (g.annee === groupeCourant ? 'on' : '') + '" data-g="' + esc(g.annee) + '">' + esc(g.nom) +
+      (g.enAttente ? '<span class="n" title="Inscriptions en attente">' + g.enAttente + '</span>' : '') + '</button>').join('');
+    const att = DATA.joueurs.filter(j => j.statut !== 'Confirmée').length;
+    $('bAtt').hidden = !att && !filtreAtt;
+    $('bAtt').textContent = (filtreAtt ? '✕ ' : '') + att + ' inscription' + (att > 1 ? 's' : '') + ' en attente';
+    $('bAtt').classList.toggle('on', filtreAtt);
+  }
+  $('groupes').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-g]'); if (!b || b.dataset.g === groupeCourant) return;
+    groupeCourant = b.dataset.g; courante = null; filtreAtt = false; $('q').value = '';
+    b.disabled = true;
+    try { await charger(); err('eTable', ''); } catch (x) { err('eTable', x.message); } finally { b.disabled = false; }
+  });
+  $('bAtt').addEventListener('click', () => { filtreAtt = !filtreAtt; afficherGroupes(); afficherTable(); });
   $('fLogin').addEventListener('submit', async e => {
     e.preventDefault();
     CODE = $('code').value.trim(); if (!CODE) return;
@@ -199,7 +252,8 @@
     finally { $('bLogin').disabled = false; }
   });
   function deconnecter(m){
-    CODE = ''; DATA = null; courante = null; $('code').value = '';
+    CODE = ''; DATA = null; courante = null; groupeCourant = ''; filtreAtt = false; $('code').value = '';
+    $('ovF').classList.remove('open'); $('groupes').innerHTML = '';
     $('tbl').innerHTML = ''; $('tblP').innerHTML = '';
     $('vTable').hidden = true; $('vPrat').hidden = true; $('out').hidden = true; $('login').hidden = false;
     $('ovA').classList.remove('open'); err('eLogin', m || ''); $('code').focus();
@@ -223,8 +277,9 @@
     const q = norm($('q').value);
     // Plus récente à gauche (à côté des noms), les plus anciennes vers la droite
     const pr = DATA.pratiques.slice().sort((a, b) => b.date.localeCompare(a.date)), prochaine = DATA.prochaine && DATA.prochaine.date;
-    const joueurs = DATA.joueurs.filter(j => !q || norm(j.nom + ' ' + j.prenom + ' ' + j.prenom + ' ' + j.nom + ' ' + j.position).includes(q));
-    if (!DATA.joueurs.length) { $('tbl').innerHTML = '<tr><td class="vide">Aucun joueur inscrit pour l’instant.</td></tr>'; return; }
+    const joueurs = DATA.joueurs.filter(j => (!filtreAtt || j.statut !== 'Confirmée') &&
+      (!q || norm(j.nom + ' ' + j.prenom + ' ' + j.prenom + ' ' + j.nom + ' ' + j.position).includes(q)));
+    if (!DATA.joueurs.length) { $('tbl').innerHTML = '<tr><td class="vide">Aucun joueur inscrit dans ' + esc(nomGroupe(groupeCourant)) + ' pour l’instant.</td></tr>'; return; }
     let h = '<thead><tr><th class="joueur">Joueur (' + joueurs.length + ')</th>';
     pr.forEach(p => {
       h += '<th class="' + (p.date === prochaine ? 'prochaine' : '') + '"><button class="prat" data-date="' + p.date + '" title="Gérer la pratique">' +
@@ -233,7 +288,9 @@
     if (!pr.length) h += '<th>Aucune pratique — ajoute-en une</th>';
     h += '</tr></thead><tbody>';
     joueurs.forEach(j => {
-      h += '<tr><td class="joueur"><span style="display:block">' + nomAff(j) + (j.incomplet ? '<span class="badge" title="Inscription incomplète">fiche incomplète</span>' : '') +
+      h += '<tr><td class="joueur"><span style="display:block"><button type="button" class="nomj" data-fiche="' + esc(j.id) + '">' + nomAff(j) + '</button>' +
+           (j.statut !== 'Confirmée' ? '<span class="badge att">en attente</span>' : '') +
+           (j.incomplet ? '<span class="badge" title="Inscription incomplète">fiche incomplète</span>' : '') +
            '</span><small>' + esc(j.position || '—') + '</small></td>';
       pr.forEach(p => { h += '<td>' + pill(j.presences[p.date]) + '</td>'; });
       if (!pr.length) h += '<td></td>';
@@ -242,7 +299,10 @@
     $('tbl').innerHTML = h + '</tbody>';
   }
   $('q').addEventListener('input', afficherTable);
-  $('tbl').addEventListener('click', e => { const b = e.target.closest('button.prat'); if (b) afficherPratique(b.dataset.date); });
+  $('tbl').addEventListener('click', e => {
+    const f = e.target.closest('button[data-fiche]'); if (f) return ouvrirFiche(f.dataset.fiche);
+    const b = e.target.closest('button.prat'); if (b) afficherPratique(b.dataset.date);
+  });
   $('bRefresh').addEventListener('click', async () => {
     $('bRefresh').disabled = true;
     try { await charger(); err('eTable', ''); } catch (x) { err('eTable', x.message); } finally { $('bRefresh').disabled = false; }
@@ -276,7 +336,7 @@
     let h = '<thead><tr><th class="l" style="background:var(--noir)">Joueur</th><th style="background:var(--noir)">Présence</th><th style="background:var(--noir)">Paiement</th><th style="background:var(--noir)"></th></tr></thead><tbody>';
     js.forEach(j => {
       const s = j.presences[courante] || { p: '', paye: false };
-      h += '<tr data-id="' + esc(j.id) + '"><td class="l">' + nomAff(j) +
+      h += '<tr data-id="' + esc(j.id) + '"><td class="l"><button type="button" class="nomj" data-fiche="' + esc(j.id) + '">' + nomAff(j) + '</button>' +
         (s.p === 'Confirmé' ? '<span class="badge">confirmé</span>' : '') +
         '<br><small style="color:var(--gris)">' + esc(j.position || '—') + '</small></td>' +
         '<td><div class="seg"><button type="button" class="pr ' + (s.p === 'Présent' ? 'on' : '') + '" data-p="Présent">Présent</button>' +
@@ -301,7 +361,7 @@
     etat.className = 'etat'; etat.textContent = '…';
     majStats();
     try {
-      await api('setPresence', Object.assign({ date: courante, id: j.id }, changement));
+      await api('setPresence', Object.assign({ groupe: groupeCourant, date: courante, id: j.id }, changement));
       etat.className = 'etat ok'; etat.textContent = '✓'; err('ePrat', '');
     } catch (x) {
       j.presences[courante] = avant;
@@ -311,6 +371,7 @@
     }
   }
   $('tblP').addEventListener('click', e => {
+    const f = e.target.closest('button[data-fiche]'); if (f) return ouvrirFiche(f.dataset.fiche);
     const b = e.target.closest('button[data-p]'); if (!b) return;
     const tr = b.closest('tr');
     const actuel = (DATA.joueurs.find(x => x.id === tr.dataset.id).presences[courante] || {}).p || '';
@@ -332,6 +393,7 @@
     ['aDate','aHeure','aEndroit','aCout','aNotes'].forEach(id => $(id).value = '');
     const der = DATA.pratiques[DATA.pratiques.length - 1];
     if (der) { $('aHeure').value = der.heure || ''; $('aEndroit').value = der.endroit || ''; $('aCout').value = der.cout || ''; }
+    $('aGroupe').textContent = 'Groupe : ' + nomGroupe(groupeCourant);
     err('eAjout', ''); $('ovA').classList.add('open'); $('aDate').focus();
   });
   const fermerA = () => { if (!$('aGo').disabled) $('ovA').classList.remove('open'); };
@@ -342,11 +404,80 @@
     if (!$('aDate').value) return err('eAjout', 'Choisis la date.');
     const b = $('aGo'); b.disabled = true; b.textContent = 'Ajout…';
     try {
-      DATA = trier(await api('ajouterPratique', { date: $('aDate').value, heure: $('aHeure').value, endroit: $('aEndroit').value, cout: $('aCout').value, notes: $('aNotes').value }));
-      b.disabled = false; fermerA(); afficherTable();
+      DATA = trier(await api('ajouterPratique', { groupe: groupeCourant, date: $('aDate').value, heure: $('aHeure').value, endroit: $('aEndroit').value, cout: $('aCout').value, notes: $('aNotes').value }));
+      b.disabled = false; fermerA(); afficherGroupes(); afficherTable();
     } catch (x) { err('eAjout', x.message); }
     finally { b.disabled = false; b.textContent = 'Ajouter'; }
   });
+
+  /* ---------- Fiche joueur ---------- */
+  let ficheId = null, minuterieNam = null;
+  async function ouvrirFiche(id){
+    ficheId = id; clearTimeout(minuterieNam);
+    const j = DATA.joueurs.find(x => x.id === id);
+    $('fTitre').textContent = j ? j.prenom + ' ' + j.nom : 'Joueur';
+    $('fCorps').textContent = 'Chargement…'; err('eFiche', '');
+    $('ovF').classList.add('open');
+    try { rendreFiche(await api('joueur', { id })); } catch (x) { $('fCorps').textContent = ''; err('eFiche', x.message); }
+  }
+  function rendreFiche(f){
+    const ligne = (k, v) => '<dt>' + k + '</dt><dd>' + (v ? esc(v) : '<span style="color:var(--gris);font-weight:400">—</span>') + '</dd>';
+    const conf = f.statut === 'Confirmée';
+    $('fCorps').innerHTML =
+      '<dl>' + ligne('Groupe', nomGroupe(f.groupe)) + ligne('Date de naissance', f.dateNaissance) + ligne('Position', f.position) +
+      ligne('Lance', f.lance) + ligne('Parent', f.parent) + ligne('Courriel', f.courriel) + ligne('Photos promo', f.photos) +
+      ligne('Inscrit le', f.inscritLe) + ligne('Source', f.source) + '</dl>' +
+
+      '<div class="bloc"><h3>Inscription</h3>' + (conf
+        ? '<span class="ok-msg">✓ Confirmée' + (f.confirmeeLe ? ' le ' + esc(f.confirmeeLe) : '') + '</span>'
+        : '<div class="ligne-act"><span class="badge att" style="margin:0">En attente</span>' +
+          '<button class="btn" id="fConf" type="button">Confirmer l’inscription</button>' +
+          (f.courriel ? '<label style="font-size:13px;display:flex;gap:6px;align-items:center;font-weight:500"><input type="checkbox" id="fEnv" checked> aviser le parent par courriel</label>' : '<small style="color:var(--gris)">aucun courriel au dossier</small>') +
+          '</div>') + '</div>' +
+
+      '<div class="bloc"><h3>Changer de groupe</h3><div class="ligne-act"><select id="fGroupe">' +
+        DATA.groupes.map(g => '<option value="' + esc(g.annee) + '"' + (g.annee === f.groupe ? ' selected' : '') + '>' + esc(g.nom) + '</option>').join('') +
+        '</select><button class="btn ghost clair" id="fChanger" type="button">Déplacer</button></div>' +
+        '<small style="color:var(--gris)">Pour un surclassement. Les présences passées restent dans l’onglet de l’ancien groupe.</small></div>' +
+
+      '<div class="bloc"><h3>Urgence</h3>' + (f.namInscrit
+        ? '<div class="ligne-act" id="fNamZone"><button class="btn" id="fNam" type="button" style="background:#b42318">Afficher le NAM</button>' +
+          '<small style="color:var(--gris)">Chaque consultation est consignée dans l’onglet Journal.</small></div>'
+        : '<small style="color:var(--gris)">Aucun NAM au dossier' + (f.source && /Confirmation/.test(f.source) ? ' (fiche à compléter par le parent)' : '') + '.</small>') + '</div>';
+
+    const bc = $('fConf');
+    if (bc) bc.addEventListener('click', async () => {
+      bc.disabled = true; bc.textContent = 'Confirmation…';
+      try {
+        const r = await api('confirmerInscription', { id: f.id, envoyer: $('fEnv') ? $('fEnv').checked : false });
+        const j = DATA.joueurs.find(x => x.id === f.id); if (j) j.statut = 'Confirmée';
+        const g = DATA.groupes.find(x => x.annee === groupeCourant); if (g && g.enAttente) g.enAttente--;
+        afficherGroupes(); afficherTable();
+        f.statut = 'Confirmée'; f.confirmeeLe = 'aujourd’hui'; rendreFiche(f);
+        if (r.courriel) $('fCorps').insertAdjacentHTML('beforeend', '<p class="ok-msg">Courriel envoyé à ' + esc(r.courriel) + '</p>');
+      } catch (x) { err('eFiche', x.message); bc.disabled = false; bc.textContent = 'Confirmer l’inscription'; }
+    });
+    $('fChanger').addEventListener('click', async () => {
+      const nv = $('fGroupe').value; if (nv === f.groupe) return;
+      if (!confirm('Déplacer ' + f.prenom + ' ' + f.nom + ' vers ' + nomGroupe(nv) + '?')) return;
+      const b = $('fChanger'); b.disabled = true; b.textContent = 'Déplacement…';
+      try { await api('changerGroupe', { id: f.id, nouveau: nv }); fermerF(); await charger(); }
+      catch (x) { err('eFiche', x.message); b.disabled = false; b.textContent = 'Déplacer'; }
+    });
+    const bn = $('fNam');
+    if (bn) bn.addEventListener('click', async () => {
+      bn.disabled = true; bn.textContent = 'Chargement…';
+      try {
+        const r = await api('voirNam', { id: f.id });
+        $('fNamZone').innerHTML = '<span class="nam">' + esc(r.nam || '—') + '</span><small style="color:var(--gris)">Masqué automatiquement dans 60 secondes.</small>';
+        minuterieNam = setTimeout(() => { if ($('fNamZone')) $('fNamZone').innerHTML = '<small style="color:var(--gris)">NAM masqué.</small>'; }, 60000);
+      } catch (x) { err('eFiche', x.message); bn.disabled = false; bn.textContent = 'Afficher le NAM'; }
+    });
+  }
+  function fermerF(){ clearTimeout(minuterieNam); $('ovF').classList.remove('open'); $('fCorps').innerHTML = ''; ficheId = null; }
+  $('fFermer').addEventListener('click', fermerF);
+  $('ovF').addEventListener('click', e => { if (e.target.id === 'ovF') fermerF(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('ovF').classList.contains('open')) fermerF(); });
 
   $('code').focus();
 })();

@@ -65,6 +65,14 @@
     .merci .ic{width:60px;height:60px;border-radius:50%;background:#e3f4ea;color:var(--ok);display:grid;place-items:center;font-size:30px;margin:4px auto 12px}
     .merci h2{color:var(--texte)}
     .merci .pratique{text-align:left;margin-top:16px}
+    .liste-prat{display:grid;gap:8px;margin-bottom:18px}
+    .liste-prat .ligne-prat{display:flex;gap:12px;align-items:center;background:var(--noir);color:#fff;border-radius:10px;padding:10px 12px}
+    .liste-prat .gr{flex:none;min-width:92px;font-weight:800;color:var(--or);font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
+    .liste-prat .inf{font-size:.88rem;line-height:1.35}
+    .liste-prat .inf i{color:#bdb5b7}
+    .groupe-info{margin-top:8px;padding:9px 12px;border-radius:10px;font-size:.9rem;font-weight:600;display:none}
+    .groupe-info.ok{display:block;background:#e3f4ea;color:var(--ok)}
+    .groupe-info.ko{display:block;background:#fbe9ec;color:var(--bordeaux)}
     [hidden]{display:none!important}
   </style>
 </head>
@@ -84,8 +92,8 @@
 
   <!-- Question d'entrée -->
   <section class="carte" id="vChoix" hidden>
-    <div class="pratique" id="pratiqueChoix" hidden></div>
-    <p class="question" id="question">As-tu déjà pratiqué avec les Aigles 2019 cette année?</p>
+    <div class="liste-prat" id="listePrat"></div>
+    <p class="question" id="question">As-tu déjà pratiqué avec les Aigles cette année?</p>
     <div class="gros">
       <button type="button" class="plein" id="bOui">Oui<small>Je confirme ma présence</small></button>
       <button type="button" id="bNon">Non<small>Première inscription</small></button>
@@ -97,7 +105,6 @@
   <section class="carte" id="vConfirmer" hidden>
     <h2>Confirmer ma présence</h2>
     <p class="sous">Pour la prochaine pratique.</p>
-    <div class="pratique" id="pratiqueConf"></div>
     <form id="fConf" novalidate>
       <div class="deux">
         <div><label for="cPrenom">Prénom du joueur</label><input id="cPrenom" autocomplete="off" maxlength="60"></div>
@@ -121,9 +128,9 @@
         <div><label for="nom">Nom</label><input id="nom" maxlength="60" autocomplete="off"></div>
       </div>
       <label for="dateNaissance">Date de naissance</label><input id="dateNaissance" type="date" min="2010-01-01" max="2024-12-31">
+      <div class="groupe-info" id="groupeInfo"></div>
       <label for="nam">Numéro d’assurance maladie (NAM)</label>
       <input id="nam" maxlength="14" placeholder="ABCD 1234 5678" autocomplete="off" inputmode="text" style="text-transform:uppercase;letter-spacing:.06em">
-      <div class="aide">Sert à éviter les inscriptions en double. Visible seulement par la gérante.</div>
 
       <div class="sec">Parent</div>
       <label for="parent">Prénom et nom du parent</label><input id="parent" maxlength="120" autocomplete="name">
@@ -185,47 +192,55 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  /* ---------- Prochaine pratique ---------- */
+  /* ---------- Pratiques ---------- */
   function datePratique(iso){ const [y,m,d] = iso.split('-').map(Number); return new Date(y, m-1, d); }
-  function htmlPratique(p){
+  const jourLong = iso => { const s = datePratique(iso).toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long' }); return s.charAt(0).toUpperCase() + s.slice(1); };
+  function htmlPratique(p, titre){
     if (!p) return '';
     const d = datePratique(p.date);
-    const jour = d.toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long' });
     const mois = d.toLocaleDateString('fr-CA', { month: 'short' }).replace('.', '');
     return '<div class="cal"><b>' + d.getDate() + '</b><small>' + esc(mois) + '</small></div>' +
-      '<div class="det"><strong>Prochaine pratique</strong>' + esc(jour.charAt(0).toUpperCase() + jour.slice(1)) +
+      '<div class="det"><strong>' + esc(titre || 'Prochaine pratique') + '</strong>' + esc(jourLong(p.date)) +
       (p.heure ? ' · ' + esc(p.heure) : '') + '<br>' + esc(p.endroit || 'Endroit à confirmer') +
       (p.cout ? '<br>Coût : ' + esc(p.cout) : '') + (p.notes ? '<br><i>' + esc(p.notes) + '</i>' : '') + '</div>';
   }
-  function afficherPratique(el, p){ el.innerHTML = htmlPratique(p); el.hidden = !p; }
+  function afficherPratique(el, p, titre){ el.innerHTML = htmlPratique(p, titre); el.hidden = !p; }
+  const groupe = annee => (CFG.groupes || []).find(g => g.annee === String(annee));
 
   /* ---------- Démarrage ---------- */
   async function init(){
     try { CFG = await api('config'); }
     catch (e) { $('chargeMsg').textContent = 'Impossible de charger le formulaire. ' + e.message; return; }
     $('titre').textContent = CFG.saison || 'Printemps 2027';
-    $('question').textContent = 'As-tu déjà pratiqué avec les ' + (CFG.equipe || 'Aigles') + ' cette année?';
-    afficherPratique($('pratiqueChoix'), CFG.prochaine);
-    afficherPratique($('pratiqueConf'), CFG.prochaine);
-    if (CFG.prochaine) {
-      $('presWrap').hidden = false;
-      const d = datePratique(CFG.prochaine.date).toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long' });
-      $('presTxt').textContent = 'Mon enfant sera présent à la prochaine pratique (' + d + ')';
-    }
-    // Pastilles
-    document.querySelectorAll('.pastilles').forEach(box => {
+    $('question').textContent = 'As-tu déjà pratiqué avec les ' + (CFG.club || 'Aigles') + ' cette année?';
+
+    // Prochaines pratiques de chaque groupe
+    $('listePrat').innerHTML = CFG.groupes.map(g => '<div class="ligne-prat"><span class="gr">' + esc(g.nom) + '</span><span class="inf">' +
+      (g.prochaine ? '<b>' + esc(jourLong(g.prochaine.date)) + '</b>' + (g.prochaine.heure ? ' · ' + esc(g.prochaine.heure) : '') +
+        '<br>' + esc(g.prochaine.endroit || 'Endroit à confirmer') : '<i>Prochaine pratique à venir</i>') + '</span></div>').join('');
+
+    // Pastilles de choix
+    document.querySelectorAll('.pastilles[data-champ]').forEach(box => {
       const k = box.dataset.champ;
-      box.innerHTML = (CFG.choix[k] || []).map(v =>
-        '<label><input type="radio" name="' + k + '" value="' + esc(v) + '">' + esc(v) + '</label>').join('');
+      box.innerHTML = (CFG.choix[k] || []).map(v => '<label><input type="radio" name="' + k + '" value="' + esc(v) + '">' + esc(v) + '</label>').join('');
     });
+
+    // Réponse à un courriel de rappel : ?c=JETON&r=oui|non
+    const q = new URLSearchParams(location.search);
+    if (q.get('c')) {
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      $('chargeMsg').textContent = 'Enregistrement de ta réponse…';
+      try {
+        const r = await api('reponseRappel', { jeton: q.get('c'), reponse: q.get('r') === 'non' ? 'non' : 'oui' });
+        return r.reponse === 'non'
+          ? merci('Absence notée', 'Merci de nous avoir avisés : ' + r.prenom + ' ' + r.nom + ' sera absent(e) à la prochaine pratique.', null, '')
+          : merci('Merci, présence confirmée!', r.prenom + ' ' + r.nom + ' (' + r.groupe + ') est attendu(e) à la prochaine pratique.', r.prochaine, '');
+      } catch (e) { vue('vChoix'); return msg('msgChoix', e.message); }
+    }
     vue('vChoix');
   }
 
-  $('bOui').addEventListener('click', () => {
-    msg('msgChoix', '');
-    if (!CFG.prochaine) return msg('msgChoix', 'Aucune pratique à venir n’est encore prévue. Reviens bientôt!', 'info');
-    vue('vConfirmer'); $('cPrenom').focus();
-  });
+  $('bOui').addEventListener('click', () => { msg('msgChoix', ''); vue('vConfirmer'); $('cPrenom').focus(); });
   $('bNon').addEventListener('click', () => {
     msg('msgChoix', '');
     if (!CFG.ouvert) return msg('msgChoix', 'Les inscriptions sont présentement fermées. Communique avec la gérante.', 'info');
@@ -247,26 +262,42 @@
     const b = $('bConf'); b.disabled = true; b.textContent = 'Confirmation…';
     try {
       const r = await api('confirmer', { prenom, nom, website: $('cWebsite').value });
-      merci('Merci, présence confirmée!', r.prenom + ' ' + r.nom + ' est attendu(e) à la prochaine pratique.', r.prochaine,
+      merci('Merci, présence confirmée!', r.prenom + ' ' + r.nom + ' (' + r.groupe + ') est attendu(e) à la prochaine pratique.', r.prochaine,
         r.ficheIncomplete ? 'Nous n’avons pas trouvé de fiche d’inscription complète pour ce joueur. La gérante pourrait te demander de remplir l’inscription.' : '');
     } catch (err) { msg('msgConf', err.message); }
     finally { b.disabled = false; b.textContent = 'Confirmer ma présence'; }
   });
 
-  /* ---------- Inscription ---------- */
+  /* ---------- Inscription : groupe selon l'année de naissance ---------- */
+  function groupeDate(){
+    const v = $('dateNaissance').value, info = $('groupeInfo');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { info.className = 'groupe-info'; $('presWrap').hidden = true; return null; }
+    const g = groupe(v.slice(0, 4));
+    if (!g) { info.className = 'groupe-info ko'; info.textContent = 'Aucun groupe pour les enfants nés en ' + v.slice(0, 4) + '. Communique avec la gérante.'; $('presWrap').hidden = true; return null; }
+    if (!g.ouvert) { info.className = 'groupe-info ko'; info.textContent = 'Les inscriptions du groupe ' + g.nom + ' sont fermées.'; $('presWrap').hidden = true; return null; }
+    info.className = 'groupe-info ok'; info.textContent = 'Groupe : ' + g.nom;
+    $('presWrap').hidden = !g.prochaine;
+    if (g.prochaine) $('presTxt').textContent = 'Mon enfant sera présent à la prochaine pratique (' + jourLong(g.prochaine.date) + (g.prochaine.heure ? ', ' + g.prochaine.heure : '') + ')';
+    return g;
+  }
+  $('dateNaissance').addEventListener('change', groupeDate);
+  $('dateNaissance').addEventListener('input', groupeDate);
+
   const radio = k => (document.querySelector('input[name="' + k + '"]:checked') || {}).value || '';
   $('fIns').addEventListener('submit', async e => {
     e.preventDefault(); msg('msgIns', '');
     const v = id => $(id).value.trim();
+    const g = groupeDate();
     const d = {
       prenom: v('prenom'), nom: v('nom'), dateNaissance: v('dateNaissance'), nam: v('nam'),
       parent: v('parent'), courriel: v('courriel'),
       position: radio('position'), lance: radio('lance'), photos: radio('photos'),
-      presentProchaine: !!CFG.prochaine && $('presentProchaine').checked, website: v('website')
+      presentProchaine: !!(g && g.prochaine) && $('presentProchaine').checked, website: v('website')
     };
     const manque = [];
     if (!d.prenom || !d.nom) manque.push('le prénom et le nom du joueur');
     if (!d.dateNaissance) manque.push('la date de naissance');
+    else if (!g) manque.push('une date de naissance qui correspond à un groupe ouvert');
     if (!/^[A-Z]{4} \d{4} \d{4}$/.test(d.nam)) manque.push('un NAM valide (ABCD 1234 5678)');
     if (!d.parent) manque.push('le nom du parent');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.courriel)) manque.push('un courriel valide');
@@ -278,9 +309,9 @@
     const b = $('bIns'); b.disabled = true; b.textContent = 'Envoi…';
     try {
       const r = await api('inscrire', d);
-      merci('Merci pour votre inscription!', 'Nous avons bien reçu l’inscription de ' + r.prenom + ' ' + r.nom + '. La gérante confirmera l’inscription dès que possible.',
-        r.confirme ? r.prochaine : null, '');
-      $('fIns').reset();
+      merci('Merci pour votre inscription!', 'Nous avons bien reçu l’inscription de ' + r.prenom + ' ' + r.nom + ' (' + r.groupe + '). ' +
+        'La gérante confirmera l’inscription dès que possible.', r.prochaine, '');
+      $('fIns').reset(); groupeDate();
     } catch (err) { msg('msgIns', err.message); $('msgIns').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     finally { b.disabled = false; b.textContent = 'Envoyer l’inscription'; }
   });
