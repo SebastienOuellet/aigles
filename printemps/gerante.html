@@ -106,6 +106,13 @@
     .modal.large{max-width:560px}
     .fiche input[type=checkbox]{width:auto;accent-color:var(--bordeaux)}
     .fiche label{margin:0}
+    .modal select{width:100%;padding:10px 12px;border:1.5px solid var(--bord);border-radius:9px;font:inherit;background:#fff;color:var(--texte)}
+    .req{color:#b42318}
+    .opt{font-weight:400;color:var(--gris)}
+    .sec-m{grid-column:1/-1;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--bordeaux);margin-top:6px;padding-top:10px;border-top:1px solid var(--bord)}
+    .aide-m{grid-column:1/-1;font-size:13px;color:#8a4b00;background:#fff4e5;border-radius:8px;padding:6px 10px}
+    .check-m{grid-column:1/-1;display:flex;gap:8px;align-items:center;font-weight:500;font-size:14px;margin:0}
+    .check-m input{width:18px;height:18px;accent-color:var(--bordeaux)}
     [hidden]{display:none!important}
   </style>
 </head>
@@ -129,6 +136,7 @@
     <div class="bar"><div class="groupes" id="groupes" role="tablist" aria-label="Groupe"></div></div>
     <div class="bar">
       <button class="btn or" id="bAjout" type="button">+ Ajouter une pratique</button>
+      <button class="btn or" id="bJoueur" type="button">+ Ajouter un joueur</button>
       <button class="filtre-att" id="bAtt" type="button" hidden></button>
       <input id="q" type="search" placeholder="Rechercher un joueur">
       <button class="btn ghost" id="bRefresh" type="button" title="Rafraîchir">↻</button>
@@ -176,6 +184,36 @@
     <div class="actions">
       <button class="btn ghost clair" id="aAnnuler" type="button">Annuler</button>
       <button class="btn" id="aGo" type="button">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ajout de joueur -->
+<div class="ov" id="ovJ" role="dialog" aria-modal="true" aria-labelledby="jTitre">
+  <div class="modal large">
+    <h2 id="jTitre">Ajouter un joueur</h2>
+    <p style="margin:-8px 0 12px;color:var(--gris);font-size:14px"><span class="req">*</span> obligatoire — le reste peut être complété plus tard.</p>
+    <div class="grille">
+      <div><label for="j_prenom">Prénom <span class="req">*</span></label><input id="j_prenom" maxlength="60"></div>
+      <div><label for="j_nom">Nom <span class="req">*</span></label><input id="j_nom" maxlength="60"></div>
+      <div><label for="j_groupe">Groupe <span class="req">*</span></label><select id="j_groupe"></select></div>
+      <div><label for="j_dateNaissance">Date de naissance</label><input id="j_dateNaissance" type="date"></div>
+      <div class="aide-m" id="j_aide" hidden></div>
+      <div><label for="j_position">Position</label><select id="j_position"></select></div>
+      <div><label for="j_lance">Lance</label><select id="j_lance"></select></div>
+      <div class="full"><label for="j_nam">NAM</label><input id="j_nam" maxlength="14" placeholder="ABCD 1234 5678" style="text-transform:uppercase;letter-spacing:.06em"></div>
+      <div class="sec-m">Parent</div>
+      <div><label for="j_parent">Nom du parent</label><input id="j_parent" maxlength="120"></div>
+      <div><label for="j_courriel">Courriel</label><input id="j_courriel" type="email" maxlength="200" placeholder="plusieurs : séparer par ;"></div>
+      <div><label for="j_photos">Photos promo</label><select id="j_photos"></select></div>
+      <div></div>
+      <label class="check-m" id="j_presWrap"><input type="checkbox" id="j_present"> <span id="j_presTxt">Présent à la prochaine pratique</span></label>
+    </div>
+    <div class="err" id="eJoueur"></div>
+    <p class="ok-msg" id="okJoueur" hidden></p>
+    <div class="actions">
+      <button class="btn ghost clair" id="jFermer" type="button">Fermer</button>
+      <button class="btn" id="jGo" type="button">Ajouter le joueur</button>
     </div>
   </div>
 </div>
@@ -253,7 +291,7 @@
   });
   function deconnecter(m){
     CODE = ''; DATA = null; courante = null; groupeCourant = ''; filtreAtt = false; $('code').value = '';
-    $('ovF').classList.remove('open'); $('groupes').innerHTML = '';
+    $('ovF').classList.remove('open'); $('ovJ').classList.remove('open'); $('groupes').innerHTML = '';
     $('tbl').innerHTML = ''; $('tblP').innerHTML = '';
     $('vTable').hidden = true; $('vPrat').hidden = true; $('out').hidden = true; $('login').hidden = false;
     $('ovA').classList.remove('open'); err('eLogin', m || ''); $('code').focus();
@@ -408,6 +446,70 @@
       b.disabled = false; fermerA(); afficherGroupes(); afficherTable();
     } catch (x) { err('eAjout', x.message); }
     finally { b.disabled = false; b.textContent = 'Ajouter'; }
+  });
+
+  /* ---------- Ajout de joueur (seuls prénom et nom obligatoires) ---------- */
+  const CHOIX_J = { position: ['Attaquant', 'Défenseur', 'Gardien'], lance: ['Gauche', 'Droite'], photos: ['Oui', 'Non'] };
+  const CHAMPS_J = ['prenom', 'nom', 'dateNaissance', 'position', 'lance', 'nam', 'parent', 'courriel', 'photos'];
+  Object.keys(CHOIX_J).forEach(k => { $('j_' + k).innerHTML = '<option value="">—</option>' + CHOIX_J[k].map(v => '<option>' + esc(v) + '</option>').join(''); });
+  function majPresJ(){
+    const g = $('j_groupe').value;
+    const p = DATA && DATA.groupe === g ? DATA.prochaine : null;
+    // La prochaine pratique n'est connue que pour le groupe affiché; sinon la case reste offerte (le serveur ignore si aucune pratique)
+    $('j_presTxt').textContent = 'Présent à la prochaine pratique' + (p ? ' (' + court(p.date) + (p.heure ? ', ' + p.heure : '') + ')' : ' du groupe');
+  }
+  function aideJ(){
+    const v = $('j_dateNaissance').value, a = $('j_aide');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { a.hidden = true; return; }
+    const an = v.slice(0, 4), g = $('j_groupe').value;
+    const existe = DATA.groupes.some(x => x.annee === an);
+    a.hidden = an === g;
+    a.textContent = existe ? 'Né en ' + an + ' : son groupe habituel est ' + nomGroupe(an) + '. Garde ' + nomGroupe(g) + ' seulement pour un surclassement.'
+                           : 'Aucun groupe pour les enfants nés en ' + an + '.';
+  }
+  function viderJ(){
+    CHAMPS_J.forEach(k => { $('j_' + k).value = ''; });
+    $('j_present').checked = false; err('eJoueur', ''); aideJ();
+  }
+  $('bJoueur').addEventListener('click', () => {
+    $('j_groupe').innerHTML = DATA.groupes.map(g => '<option value="' + esc(g.annee) + '">' + esc(g.nom) + '</option>').join('');
+    $('j_groupe').value = groupeCourant;
+    viderJ(); $('okJoueur').hidden = true; majPresJ();
+    $('ovJ').classList.add('open'); $('j_prenom').focus();
+  });
+  $('j_dateNaissance').addEventListener('change', () => {
+    const an = $('j_dateNaissance').value.slice(0, 4);
+    if (DATA.groupes.some(x => x.annee === an)) $('j_groupe').value = an; // groupe suggéré selon l'année
+    majPresJ(); aideJ();
+  });
+  $('j_groupe').addEventListener('change', () => { majPresJ(); aideJ(); });
+  $('j_nam').addEventListener('input', e => {
+    const x = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+    e.target.value = [x.slice(0, 4), x.slice(4, 8), x.slice(8)].filter(Boolean).join(' ');
+  });
+  const fermerJ = () => { if (!$('jGo').disabled) $('ovJ').classList.remove('open'); };
+  $('jFermer').addEventListener('click', fermerJ);
+  $('ovJ').addEventListener('click', e => { if (e.target.id === 'ovJ') fermerJ(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('ovJ').classList.contains('open')) fermerJ(); });
+  $('jGo').addEventListener('click', async () => {
+    const d = { groupe: $('j_groupe').value, presentProchaine: $('j_present').checked };
+    CHAMPS_J.forEach(k => { d[k] = $('j_' + k).value.trim(); });
+    const pb = [];
+    if (!d.prenom || !d.nom) pb.push('le prénom et le nom');
+    if (d.nam && !/^[A-Z]{4} \d{4} \d{4}$/.test(d.nam)) pb.push('un NAM complet (ABCD 1234 5678) ou vide');
+    if (d.courriel && d.courriel.split(/[;,\s]+/).filter(Boolean).some(x => !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(x))) pb.push('un courriel valide ou vide');
+    if (pb.length) return err('eJoueur', 'Il faut ' + pb.join(', ') + '.');
+    err('eJoueur', ''); $('okJoueur').hidden = true;
+    const b = $('jGo'); b.disabled = true; b.textContent = 'Ajout…';
+    try {
+      DATA = trier(await api('ajouterJoueur', d));
+      groupeCourant = DATA.groupe; courante = null;
+      afficherGroupes(); afficherTable();
+      $('okJoueur').textContent = '✓ ' + d.prenom + ' ' + d.nom + ' ajouté(e) dans ' + nomGroupe(d.groupe) + '. Tu peux en ajouter un autre.';
+      $('okJoueur').hidden = false;
+      const g = d.groupe; viderJ(); $('j_groupe').value = g; majPresJ(); $('j_prenom').focus();
+    } catch (x) { err('eJoueur', x.message); }
+    finally { b.disabled = false; b.textContent = 'Ajouter le joueur'; }
   });
 
   /* ---------- Fiche joueur ---------- */

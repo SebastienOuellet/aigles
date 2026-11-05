@@ -202,7 +202,7 @@ function doPost(e) {
   try {
     const req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     const d = req.data || {};
-    const gerante = ['gestion', 'setPresence', 'ajouterPratique', 'joueur', 'confirmerInscription', 'changerGroupe', 'voirNam'];
+    const gerante = ['gestion', 'setPresence', 'ajouterPratique', 'ajouterJoueur', 'joueur', 'confirmerInscription', 'changerGroupe', 'voirNam'];
     if (gerante.indexOf(req.action) > -1) verifierCode_(req.code);
     switch (req.action) {
       case 'config': out = configPublique_(); if (d.diag) out.diag = diagnostic_(); break;
@@ -212,6 +212,7 @@ function doPost(e) {
       case 'gestion': out = gestion_(d.groupe); break;
       case 'setPresence': out = setPresence_(d); break;
       case 'ajouterPratique': out = ajouterPratique_(d); break;
+      case 'ajouterJoueur': out = ajouterJoueur_(d); break;
       case 'joueur': out = ficheJoueur_(d); break;
       case 'confirmerInscription': out = confirmerInscription_(d); break;
       case 'changerGroupe': out = changerGroupe_(d); break;
@@ -538,6 +539,45 @@ function ajouterPratique_(d) {
   Object.keys(vals).forEach(k => sh.getRange(r, C[k]).setValue(vals[k]));
   sh.getRange(r, C.date).setNumberFormat('yyyy-mm-dd');
   colsPratique_(feuillePres_(annee), date);
+  return gestion_(annee);
+}
+
+/**
+ * Ajout d'un joueur par la gérante : seuls le prénom et le nom sont obligatoires.
+ * Les autres champs sont validés seulement s'ils sont remplis. Statut : Confirmée.
+ */
+function ajouterJoueur_(d) {
+  const annee = String(d.groupe || '');
+  const groupes = lireGroupes_();
+  if (!groupes.some(g => g.annee === annee)) throw new Error('Choisis un groupe.');
+  const t = (v, max) => String(v == null ? '' : v).trim().slice(0, max || 200);
+  const o = {
+    prenom: t(d.prenom, 60), nom: t(d.nom, 60),
+    parent: t(d.parent, 120), courriel: t(d.courriel, 200).toLowerCase(),
+    position: t(d.position), lance: t(d.lance), photos: t(d.photos),
+    dateNaissance: t(d.dateNaissance, 10), nam: d.nam ? normNam_(d.nam) : '',
+    statut: 'Confirmée', confirmeeLe: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd')
+  };
+  const err = [];
+  if (!o.prenom || !o.nom) err.push('Prénom et nom requis.');
+  if (o.courriel && String(o.courriel).split(/[;,\s]+/).filter(Boolean).some(x => !courrielValide_(x))) err.push('Courriel invalide.');
+  if (o.dateNaissance && !/^\d{4}-\d{2}-\d{2}$/.test(o.dateNaissance)) err.push('Date de naissance invalide.');
+  if (o.nam && !/^[A-Z]{4} \d{4} \d{4}$/.test(o.nam)) err.push('NAM invalide (format : ABCD 1234 5678).');
+  ['position', 'lance', 'photos'].forEach(k => { if (o[k] && CHOIX[k].indexOf(o[k]) === -1) err.push('Choix invalide : ' + k + '.'); });
+  if (err.length) throw new Error(err.join(' '));
+
+  const lock = verrou_();
+  try {
+    const existe = trouverParNom_(o.prenom, o.nom);
+    if (existe) {
+      const g = groupes.find(x => x.annee === existe.annee);
+      throw new Error(o.prenom + ' ' + o.nom + ' existe déjà (' + (g ? g.nom : existe.annee) + ').');
+    }
+    const j = enregistrerJoueur_(o, 'Ajout gérante', annee);
+    if (d.presentProchaine) confirmerPresenceProchaine_(j);
+    journal_('Joueur ajouté', j.id + ' ' + o.prenom + ' ' + o.nom + ' — ' + annee);
+    SpreadsheetApp.flush();
+  } finally { lock.releaseLock(); }
   return gestion_(annee);
 }
 
