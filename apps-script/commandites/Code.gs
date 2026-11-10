@@ -7,8 +7,7 @@
 
 const FEUILLE_CONFIG = 'Config';
 const FEUILLE_FACTURES = 'Factures';
-const TAUX_TPS = 0.05;
-const TAUX_TVQ = 0.09975;
+const NEQ_ORG = '1176185206';
 const LOGO_MAX_OCTETS = 8 * 1024 * 1024; // 8 Mo
 const LOGO_TYPES = [
   'image/png', 'image/jpeg', 'image/svg+xml', 'image/webp',
@@ -21,16 +20,13 @@ const CONFIG_DEFAUT = [
   ['ADRESSE_ORG', '264 rue Hémond, Sherbrooke, QC J1R 0A4', 'Adresse sur la facture'],
   ['COURRIEL_ORG', 'ehae@hotmail.ca', 'Courriel affiché sur la facture'],
   ['SITE_ORG', 'https://aiglessherbrookeaaa.ca/', 'Site web affiché sur la facture'],
-  ['NO_TPS', '', 'OBLIGATOIRE si on facture les taxes — ex. 123456789 RT0001'],
-  ['NO_TVQ', '', 'OBLIGATOIRE si on facture les taxes — ex. 1234567890 TQ0001'],
   ['PROCHAIN_NO_FACTURE', 202703, 'Ancien compteur commun — sert seulement si une équipe n’a pas son propre PROCHAIN_NO_FACTURE_<équipe>'],
   ['POURCENT_EQUIPE_MIN', 30, 'Pourcentage minimum pour l’équipe'],
-  ['SEUIL_100_EQUIPE', 250, 'Montant (taxes incl.) égal ou inférieur = 100 % à l’équipe'],
+  ['SEUIL_100_EQUIPE', 250, 'Montant égal ou inférieur = 100 % à l’équipe'],
   ['MODE_TEST', 'OUI', 'OUI = test (pas de vrai n°, rien dans les onglets d’équipe, courriel gérante redirigé) | NON = production'],
   ['LIEN_FORMULAIRE', 'https://sebastienouellet.github.io/aigles/commandites/', 'Lien public du formulaire (site Aigles, GitHub Pages)'],
   ['CODE_GERANTE', '', 'Code secret du mode gérante (lien du formulaire + ?gerante). Vide = mode gérante désactivé'],
   ['COURRIEL_TEST', '', 'En mode test, reçoit le courriel « gérante » (vide = courriel du parent)'],
-  ['BASE_RATIO', 'AVANT_TAXES', 'AVANT_TAXES = ratio calculé sur le sous-total | TOTAL = sur le montant taxes incluses'],
   ['DESCRIPTION_DEFAUT', 'Commandite pour LHSS - Saison Hockey 2026-2027', 'Ligne de description sur la facture'],
   ['CHEQUE_ORDRE', 'AIGLES AAA DE SHERBROOKE', 'À l’ordre de (chèques)'],
   ['INTERAC_TEL', '819-679-4208', 'Destinataire du virement Interac'],
@@ -46,6 +42,7 @@ const CONFIG_DEFAUT = [
   ['DOSSIER_FACTURES_ID', '', 'Rempli automatiquement']
 ];
 
+// Conserve les en-têtes historiques pour les feuilles Factures existantes.
 const COLONNES_FACTURES = [
   'Horodatage', 'N° facture', 'Date facture', 'Équipe', 'Joueur',
   'Parent', 'Courriel parent', 'Tél. parent',
@@ -127,7 +124,6 @@ function setup() {
   const manquants = equipes_(c).filter(eq => !ss.getSheetByName(eq));
   const avertissements = [];
   if (manquants.length) avertissements.push('Onglets introuvables : ' + manquants.join(', ') + ' (vérifie EQUIPES dans Config).');
-  if (!c.NO_TPS || !c.NO_TVQ) avertissements.push('Inscris NO_TPS et NO_TVQ dans Config avant d’envoyer de vraies factures.');
   equipes_(c).forEach(eq => { if (!c['COURRIEL_GERANTE_' + eq]) avertissements.push('Courriel de la gérante manquant pour ' + eq + '.'); });
 
   SpreadsheetApp.getUi().alert(
@@ -206,8 +202,8 @@ function getFormConfig() {
     nomOrg: c.NOM_ORG,
     description: c.DESCRIPTION_DEFAUT,
     pctMin: Number(c.POURCENT_EQUIPE_MIN) || 30,
-    baseRatio: c.BASE_RATIO === 'TOTAL' ? 'TOTAL' : 'AVANT_TAXES',
-    tauxTps: TAUX_TPS, tauxTvq: TAUX_TVQ,
+    baseRatio: 'TOTAL',
+    tauxTps: 0, tauxTvq: 0,
     seuil100: seuil_(c),
     modeTest: modeTest_(c),
     equipes: equipes_(c).map(nom => ({ nom: nom, joueurs: joueurs_(ss.getSheetByName(nom)) }))
@@ -268,20 +264,14 @@ function submitCommandite(d) {
  * Logique métier
  * ============================================================ */
 
-/** Le montant saisi est TAXES INCLUSES (comme la facture Marché Terril : 3000 $ total). */
 function calculer_(montant, pctEquipe, c) {
   const total = r2_(montant);
   if (total <= seuil_(c)) pctEquipe = 100; // petits montants : 100 % équipe
-  const estime = r2_(total / (1 + TAUX_TPS + TAUX_TVQ));
-  const tps = r2_(estime * TAUX_TPS);
-  const tvq = r2_(estime * TAUX_TVQ);
-  const sousTotal = r2_(total - tps - tvq); // garantit sous-total + taxes = total exact
-  const base = c.BASE_RATIO === 'TOTAL' ? total : sousTotal;
-  const equipe = r2_(base * pctEquipe / 100);
+  const equipe = r2_(total * pctEquipe / 100);
   return {
-    total: total, sousTotal: sousTotal, tps: tps, tvq: tvq,
-    base: base, pctEquipe: pctEquipe, pctJoueur: 100 - pctEquipe,
-    equipe: equipe, joueur: r2_(base - equipe)
+    total: total, sousTotal: total, tps: 0, tvq: 0,
+    pctEquipe: pctEquipe, pctJoueur: 100 - pctEquipe,
+    equipe: equipe, joueur: r2_(total - equipe)
   };
 }
 
@@ -525,8 +515,6 @@ function genererPdf_(d, calc, no, date, c) {
 function construireHtmlFacture_(d, calc, no, date, c, logoDataUri) {
   const e = esc_;
   const adresse = [d.adresse, [d.ville, d.province, d.codePostal].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-  const taxes = (c.NO_TPS || c.NO_TVQ)
-    ? '<div class="taxnos">TPS : ' + e(c.NO_TPS || '—') + ' &nbsp;·&nbsp; TVQ : ' + e(c.NO_TVQ || '—') + '</div>' : '';
   const ligneInfo = (lbl, val) => val ? '<tr><td class="lbl">' + lbl + '</td><td>' + e(val) + '</td></tr>' : '';
 
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>' +
@@ -537,7 +525,7 @@ function construireHtmlFacture_(d, calc, no, date, c, logoDataUri) {
     '<table><tr><td style="vertical-align:top">' +
       (logoDataUri ? '<img src="' + logoDataUri + '" style="height:70px;margin-bottom:6px"><br>' : '') +
       '<div class="org">' + e(c.NOM_ORG) + '</div>' +
-      '<div class="muted">' + e(c.ADRESSE_ORG) + '<br>' + e(c.COURRIEL_ORG) + ' &nbsp;|&nbsp; ' + e(c.SITE_ORG) + '</div>' + taxes +
+      '<div class="muted">' + e(c.ADRESSE_ORG) + '<br>' + e(c.COURRIEL_ORG) + ' &nbsp;|&nbsp; ' + e(c.SITE_ORG) + '<br>NEQ : ' + NEQ_ORG + '</div>' +
     '</td><td style="vertical-align:top;width:230px">' +
       '<div class="titre">FACTURE</div>' +
       '<table class="box" style="margin-top:8px"><tr><td class="lbl">N° de facture</td><td class="r"><b>' + e(no) + '</b></td></tr>' +
@@ -559,13 +547,10 @@ function construireHtmlFacture_(d, calc, no, date, c, logoDataUri) {
       '<th class="r" style="width:95px">Prix unitaire</th><th class="r" style="width:95px">Total</th></tr>' +
     '<tr><td>' + dateCourte_(date) + '</td><td>' + e(d.description) +
       '<br><span class="muted">Joueur : ' + e(d.joueur) + '</span></td>' +
-      '<td class="r">1</td><td class="r">' + argent_(calc.sousTotal) + '</td><td class="r">' + argent_(calc.sousTotal) + '</td></tr>' +
+      '<td class="r">1</td><td class="r">' + argent_(calc.total) + '</td><td class="r">' + argent_(calc.total) + '</td></tr>' +
     '</table>' +
 
     '<table class="tot" style="width:300px;margin:14px 0 0 auto">' +
-      '<tr><td>Sous-total</td><td class="r">' + argent_(calc.sousTotal) + '</td></tr>' +
-      '<tr><td>TPS (5 %)</td><td class="r">' + argent_(calc.tps) + '</td></tr>' +
-      '<tr><td>TVQ (9,975 %)</td><td class="r">' + argent_(calc.tvq) + '</td></tr>' +
       '<tr><td>Acompte reçu</td><td class="r">' + argent_(0) + '</td></tr>' +
       '<tr class="grand"><td>TOTAL À PAYER</td><td class="r">' + argent_(calc.total) + '</td></tr>' +
     '</table>' +
@@ -586,7 +571,6 @@ function cssDoc_() {
     'table{border-collapse:collapse;width:100%;}' +
     '.org{font-size:18pt;font-weight:bold;color:#0b2545;letter-spacing:.5px;}' +
     '.muted{color:#555;font-size:9.5pt;line-height:1.45;}' +
-    '.taxnos{color:#555;font-size:9pt;margin-top:2px;}' +
     '.titre{font-size:22pt;font-weight:bold;color:#0b2545;text-align:right;}' +
     '.bar{height:4px;background:#c9a227;margin:14px 0 18px;}' +
     '.lbl{color:#555;width:95px;vertical-align:top;padding:2px 8px 2px 0;}' +
@@ -660,7 +644,7 @@ function envoyerCourriels_(d, calc, no, date, pdfBlob, pdfFile, logoFile, c, cor
           r('Commanditaire', esc_(d.commanditaire) + (d.contact ? ' (' + esc_(d.contact) + ')' : '')) +
           r('Adresse', esc_([d.adresse, d.ville, d.province, d.codePostal].join(', '))) +
           r('Contact', esc_([d.telephone, d.courriel].filter(Boolean).join(' · ') || '—')) +
-          r('Montant', '<b>' + argent_(calc.total) + '</b> (sous-total ' + argent_(calc.sousTotal) + ' + TPS ' + argent_(calc.tps) + ' + TVQ ' + argent_(calc.tvq) + ')') +
+          r('Montant', '<b>' + argent_(calc.total) + '</b>') +
           r('Équipe', argent_(calc.equipe) + ' (' + calc.pctEquipe + ' %)') +
           r('Joueur', argent_(calc.joueur) + ' (' + calc.pctJoueur + ' %)') +
           r('Logo', logoFile ? '<a href="' + logoFile.getUrl() + '">Voir dans Drive</a>' : '<i>à recevoir</i>') +
@@ -1001,8 +985,6 @@ function emettreRecuConfirme(p) {
 function construireHtmlRecu_(d, calc, no, datePmt, mode, ref, c, logoDataUri) {
   const e = esc_;
   const adresse = [d.adresse, [d.ville, d.province, d.codePostal].filter(Boolean).join(' ')].filter(Boolean).join(', ');
-  const taxes = (c.NO_TPS || c.NO_TVQ)
-    ? '<div class="taxnos">TPS : ' + e(c.NO_TPS || '—') + ' &nbsp;·&nbsp; TVQ : ' + e(c.NO_TVQ || '—') + '</div>' : '';
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><style>' + cssDoc_() +
     '.paye{display:inline-block;border:3px solid #127a43;color:#127a43;font-size:20pt;font-weight:bold;padding:4px 18px;letter-spacing:3px;margin-top:6px;}' +
     '</style></head><body>' +
@@ -1010,7 +992,7 @@ function construireHtmlRecu_(d, calc, no, datePmt, mode, ref, c, logoDataUri) {
     '<table><tr><td style="vertical-align:top">' +
       (logoDataUri ? '<img src="' + logoDataUri + '" style="height:70px;margin-bottom:6px"><br>' : '') +
       '<div class="org">' + e(c.NOM_ORG) + '</div>' +
-      '<div class="muted">' + e(c.ADRESSE_ORG) + '<br>' + e(c.COURRIEL_ORG) + ' &nbsp;|&nbsp; ' + e(c.SITE_ORG) + '</div>' + taxes +
+      '<div class="muted">' + e(c.ADRESSE_ORG) + '<br>' + e(c.COURRIEL_ORG) + ' &nbsp;|&nbsp; ' + e(c.SITE_ORG) + '<br>NEQ : ' + NEQ_ORG + '</div>' +
     '</td><td style="vertical-align:top;width:240px">' +
       '<div class="titre">REÇU</div>' +
       '<table class="box" style="margin-top:8px"><tr><td class="lbl">Facture n°</td><td class="r"><b>' + e(no) + '</b></td></tr>' +
@@ -1022,11 +1004,8 @@ function construireHtmlRecu_(d, calc, no, datePmt, mode, ref, c, logoDataUri) {
     '<table class="box"><tr><td class="lbl">Entreprise</td><td><b>' + e(d.commanditaire) + '</b></td></tr>' +
       (adresse ? '<tr><td class="lbl">Adresse</td><td>' + e(adresse) + '</td></tr>' : '') + '</table>' +
     '<table class="items" style="margin-top:22px"><tr><th>Description</th><th class="r" style="width:110px">Montant</th></tr>' +
-      '<tr><td>' + e(d.description) + '<br><span class="muted">Joueur : ' + e(d.joueur) + '</span></td><td class="r">' + argent_(calc.sousTotal) + '</td></tr></table>' +
+      '<tr><td>' + e(d.description) + '<br><span class="muted">Joueur : ' + e(d.joueur) + '</span></td><td class="r">' + argent_(calc.total) + '</td></tr></table>' +
     '<table class="tot" style="width:300px;margin:14px 0 0 auto">' +
-      '<tr><td>Sous-total</td><td class="r">' + argent_(calc.sousTotal) + '</td></tr>' +
-      '<tr><td>TPS (5 %)</td><td class="r">' + argent_(calc.tps) + '</td></tr>' +
-      '<tr><td>TVQ (9,975 %)</td><td class="r">' + argent_(calc.tvq) + '</td></tr>' +
       '<tr class="grand"><td>TOTAL PAYÉ</td><td class="r">' + argent_(calc.total) + '</td></tr></table>' +
     '<table style="margin-top:22px"><tr><td style="vertical-align:middle">' +
       '<div class="pay" style="margin-top:0"><b>Paiement reçu</b><br>Mode : ' + e(mode) + (ref ? ' — Réf. ' + e(ref) : '') +

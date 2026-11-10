@@ -251,15 +251,6 @@
     var p = r2(n).toFixed(2).split('.');
     return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ',' + p[1] + ' $';
   }
-  function calc(montant, pct){
-    var total = r2(montant) || 0;
-    var est = r2(total / (1 + CFG.tauxTps + CFG.tauxTvq));
-    var tps = r2(est * CFG.tauxTps), tvq = r2(est * CFG.tauxTvq);
-    var sous = r2(total - tps - tvq);
-    var base = CFG.baseRatio === 'TOTAL' ? total : sous;
-    var eq = r2(base * pct / 100);
-    return { total: total, sous: sous, tps: tps, tvq: tvq, equipe: eq, joueur: r2(base - eq) };
-  }
   function montant(){ return Number(String($('montant').value).replace(/\s|\$/g,'').replace(',', '.')) || 0; }
 
   function petit(){ var m = montant(); return m > 0 && m <= CFG.seuil100; }
